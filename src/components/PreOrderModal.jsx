@@ -87,23 +87,31 @@ export default function PreOrderModal({ product, onClose, user }) {
   if (success) {
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
           <button className="modal-close" onClick={onClose}>×</button>
           <div className="success-msg" style={{ padding: '20px 0' }}>
-            <h2 style={{ color: 'var(--gold)', marginBottom: '10px' }}>✅ บันทึกคำสั่งซื้อสำเร็จ!</h2>
-            <p style={{ marginTop: '10px', marginBottom: '20px', lineHeight: '1.5', color: '#fff' }}>
-              กรุณากดปุ่มด้านล่างเพื่อแอด LINE แจ้งรหัสออเดอร์ <strong>#{orderId}</strong><br/>
-              และพูดคุยเพื่อยืนยันรายละเอียด/ชำระเงินกับทางร้าน
+            <h2 style={{ color: 'var(--gold)', marginBottom: '10px', fontSize: '28px' }}>✅ บันทึกคำสั่งซื้อสำเร็จ!</h2>
+            
+            <p style={{ marginTop: '15px', color: '#ccc', fontSize: '16px' }}>กรุณาจำรหัสออเดอร์ด้านล่างนี้เพื่อแจ้งกับทางร้าน</p>
+            
+            <div style={{ background: 'rgba(212,175,55,0.1)', border: '2px dashed var(--gold)', borderRadius: '12px', padding: '20px', margin: '20px auto', display: 'inline-block', minWidth: '250px' }}>
+              <span style={{ display: 'block', fontSize: '14px', color: '#aaa', marginBottom: '8px' }}>รหัสออเดอร์ของคุณ</span>
+              <span style={{ fontSize: '42px', fontWeight: '900', color: 'var(--gold)', letterSpacing: '2px', textShadow: '0 2px 10px rgba(212,175,55,0.3)' }}>#{orderId}</span>
+            </div>
+            
+            <p style={{ marginBottom: '24px', color: '#fff', fontSize: '15px' }}>
+              กรุณากดปุ่มด้านล่างเพื่อแอด LINE และพูดคุย<br/>เพื่อยืนยันรายละเอียด/ชำระเงิน
             </p>
+
             <a 
               href="https://line.me/ti/p/~@petmeshirt" 
               target="_blank" 
               className="btn btn-primary"
-              style={{ display: 'inline-block', backgroundColor: '#00B900', color: 'white', border: 'none', padding: '12px 24px', fontSize: '16px' }}
+              style={{ display: 'inline-block', backgroundColor: '#00B900', color: 'white', border: 'none', padding: '16px 32px', fontSize: '18px', fontWeight: 'bold', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0, 185, 0, 0.4)' }}
             >
               แชทกับทางร้านผ่าน LINE
             </a>
-            <p style={{ fontSize: '13px', marginTop: '20px', color: '#888' }}>
+            <p style={{ fontSize: '13px', marginTop: '24px', color: '#888' }}>
               * สถานะจะเปลี่ยนเป็น "ยืนยันแล้ว" หลังจากทางร้านตรวจสอบในแชทเรียบร้อย<br/>
               คุณสามารถดูสถานะออเดอร์ได้ที่เมนู "ออเดอร์ของฉัน"
             </p>
