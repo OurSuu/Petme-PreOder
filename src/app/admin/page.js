@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { login } from './actions';
 
 export default function AdminDashboard() {
@@ -11,6 +11,7 @@ export default function AdminDashboard() {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
+  const prevOrderCountRef = useRef(0);
 
   // การจัดการค้นหา, กรองสถานะ และแบ่งหน้า
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,6 +42,14 @@ export default function AdminDashboard() {
       const res = await fetch('/api/orders');
       if (res.ok) {
         const data = await res.json();
+        
+        // เล่นเสียงแจ้งเตือนถ้ามีออเดอร์ใหม่เข้ามา (เปรียบเทียบจำนวนออเดอร์)
+        if (prevOrderCountRef.current > 0 && data.length > prevOrderCountRef.current) {
+          const audio = new Audio('/audio/notification.ogg');
+          audio.play().catch(e => console.log('Audio play blocked:', e));
+        }
+        prevOrderCountRef.current = data.length;
+        
         setOrders(data);
       }
     } catch (err) {
