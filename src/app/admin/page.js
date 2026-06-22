@@ -92,17 +92,27 @@ export default function AdminDashboard() {
   const thisMonth = now.getMonth();
   const thisYear = now.getFullYear();
 
-  let todayCount = 0;
+  let todayPending = 0;
+  let todayConfirmed = 0;
+  let todayProducing = 0;
+  let todayShipped = 0;
+
   let monthCount = 0;
   let yearCount = 0;
-  let pendingCount = 0;
 
   orders.forEach(o => {
     const d = new Date(o.createdAt);
-    if (o.status === 'pending') pendingCount++;
+    const orderDate = d.toISOString().split('T')[0];
     
-    // นับยอด (จำนวนตัว)
-    if (d.toISOString().split('T')[0] === today) todayCount += o.quantity;
+    // สถานะสำหรับวันนี้
+    if (orderDate === today) {
+      if (o.status === 'pending') todayPending++;
+      if (o.status === 'confirmed') todayConfirmed++;
+      if (o.status === 'producing') todayProducing++;
+      if (o.status === 'shipped') todayShipped++;
+    }
+    
+    // นับยอดรวม (จำนวนตัว)
     if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) monthCount += o.quantity;
     if (d.getFullYear() === thisYear) yearCount += o.quantity;
   });
@@ -115,22 +125,35 @@ export default function AdminDashboard() {
           <button className="btn btn-ghost" onClick={() => setIsAuthenticated(false)}>Logout</button>
         </div>
 
-        <div className="admin-stats">
-          <div className="stat-card">
-            <div className="stat-label">ยอดขายวันนี้ (ตัว)</div>
-            <div className="stat-value">{todayCount}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">ยอดขายเดือนนี้ (ตัว)</div>
-            <div className="stat-value" style={{color: '#3b82f6'}}>{monthCount}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">ยอดขายปีนี้ (ตัว)</div>
-            <div className="stat-value" style={{color: '#22c55e'}}>{yearCount}</div>
-          </div>
+        <h2 style={{ fontSize: '18px', marginBottom: '14px', color: 'var(--gold)' }}>ออเดอร์ของวันนี้ (รายการ)</h2>
+        <div className="admin-stats" style={{ marginBottom: '20px' }}>
           <div className="stat-card pending">
-            <div className="stat-label">รอดำเนินการ (ออเดอร์)</div>
-            <div className="stat-value">{pendingCount}</div>
+            <div className="stat-label">รอดำเนินการ</div>
+            <div className="stat-value">{todayPending}</div>
+          </div>
+          <div className="stat-card confirmed">
+            <div className="stat-label">ยืนยันแล้ว</div>
+            <div className="stat-value" style={{color: '#3b82f6'}}>{todayConfirmed}</div>
+          </div>
+          <div className="stat-card producing">
+            <div className="stat-label">กำลังผลิต</div>
+            <div className="stat-value" style={{color: 'var(--red)'}}>{todayProducing}</div>
+          </div>
+          <div className="stat-card shipped">
+            <div className="stat-label">จัดส่งแล้ว</div>
+            <div className="stat-value" style={{color: '#22c55e'}}>{todayShipped}</div>
+          </div>
+        </div>
+
+        <h2 style={{ fontSize: '18px', marginBottom: '14px', color: 'var(--gold)' }}>ยอดขายภาพรวม (จำนวนตัว)</h2>
+        <div className="admin-stats" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: '30px' }}>
+          <div className="stat-card">
+            <div className="stat-label">ยอดขายเดือนนี้</div>
+            <div className="stat-value">{monthCount}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">ยอดขายปีนี้</div>
+            <div className="stat-value">{yearCount}</div>
           </div>
         </div>
 
