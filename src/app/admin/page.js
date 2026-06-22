@@ -12,6 +12,10 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const prevOrderCountRef = useRef(0);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+
+  // Custom Confirm Dialog
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
 
   // การจัดการค้นหา, กรองสถานะ และแบ่งหน้า
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,6 +40,15 @@ export default function AdminDashboard() {
     setSelectedOrders([]);
   }, [searchTerm, statusFilter]);
 
+  const enableAudio = () => {
+    const audio = new Audio('/audio/notification.ogg');
+    audio.play().then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      setAudioEnabled(true);
+    }).catch(e => console.error(e));
+  };
+
   const fetchOrders = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
@@ -43,10 +56,12 @@ export default function AdminDashboard() {
       if (res.ok) {
         const data = await res.json();
         
-        // เล่นเสียงแจ้งเตือนถ้ามีออเดอร์ใหม่เข้ามา (เปรียบเทียบจำนวนออเดอร์)
+        // เล่นเสียงแจ้งเตือนถ้ามีออเดอร์ใหม่เข้ามา
         if (prevOrderCountRef.current > 0 && data.length > prevOrderCountRef.current) {
-          const audio = new Audio('/audio/notification.ogg');
-          audio.play().catch(e => console.log('Audio play blocked:', e));
+          if (audioEnabled) {
+            const audio = new Audio('/audio/notification.ogg');
+            audio.play().catch(e => console.log('Audio play blocked:', e));
+          }
         }
         prevOrderCountRef.current = data.length;
         
@@ -82,14 +97,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const deleteOrder = async (id) => {
-    if (!confirm('คุณต้องการลบคำสั่งซื้อนี้ใช่หรือไม่?')) return;
-    try {
-      const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
-      if (res.ok) fetchOrders();
-    } catch (err) {
-      console.error(err);
-    }
+  const requestDeleteOrder = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      message: 'คุณต้องการลบคำสั่งซื้อนี้ใช่หรือไม่?',
+      onConfirm: async () => {
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        try {
+          const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+          if (res.ok) fetchOrders();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
   };
 
   // --- Bulk Actions ---
@@ -109,22 +130,28 @@ export default function AdminDashboard() {
     }
   };
 
-  const bulkUpdateStatus = async (status) => {
+  const requestBulkUpdateStatus = (status) => {
     if (selectedOrders.length === 0) return;
-    if (!confirm(`ต้องการเปลี่ยนสถานะ ${selectedOrders.length} รายการเป็น "${status}" ใช่หรือไม่?`)) return;
+    
+    setConfirmDialog({
+      isOpen: true,
+      message: `ต้องการเปลี่ยนสถานะ ${selectedOrders.length} รายการเป็น "${status}" ใช่หรือไม่?`,
+      onConfirm: async () => {
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        setLoading(true);
+        // อัปเดตพร้อมกันหลายรายการ
+        await Promise.all(selectedOrders.map(id =>
+          fetch(`/api/orders/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+          })
+        ));
 
-    setLoading(true);
-    // อัปเดตพร้อมกันหลายรายการ
-    await Promise.all(selectedOrders.map(id =>
-      fetch(`/api/orders/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      })
-    ));
-
-    setSelectedOrders([]);
-    fetchOrders();
+        setSelectedOrders([]);
+        fetchOrders();
+      }
+    });
   };
 
   // --- Export CSV ---
@@ -228,7 +255,18 @@ export default function AdminDashboard() {
       <div className="wrap" style={{ maxWidth: '1400px' }}>
         <div className="admin-header">
           <h1>จัดการคำสั่งซื้อ (Pre-Order)</h1>
-          <button className="btn btn-ghost" onClick={() => setIsAuthenticated(false)}>Logout</button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {!audioEnabled ? (
+              <button className="btn btn-ghost" onClick={enableAudio} style={{ fontSize: '13px', padding: '6px 12px', borderColor: 'var(--gold)', color: 'var(--gold)' }}>
+                🔔 เปิดเสียงแจ้งเตือน
+              </button>
+            ) : (
+              <span style={{ fontSize: '13px', color: '#22c55e', padding: '6px 12px', border: '1px solid #22c55e', borderRadius: '4px' }}>
+                🔔 เปิดเสียงแจ้งเตือนแล้ว
+              </span>
+            )}
+            <button className="btn btn-ghost" onClick={() => setIsAuthenticated(false)}>Logout</button>
+          </div>
         </div>
 
         <h2 style={{ fontSize: '18px', marginBottom: '14px', color: 'var(--gold)' }}>ออเดอร์ของวันนี้ (รายการ)</h2>
@@ -300,10 +338,10 @@ export default function AdminDashboard() {
             <span style={{ color: 'var(--gold)', fontWeight: 'bold' }}>เลือกแล้ว {selectedOrders.length} รายการ</span>
             <div style={{ display: 'flex', gap: '8px' }}>
               <span style={{ margin: 'auto 0' }}>เปลี่ยนสถานะเป็น:</span>
-              <button onClick={() => bulkUpdateStatus('confirmed')} style={{ padding: '4px 8px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>ยืนยันแล้ว</button>
-              <button onClick={() => bulkUpdateStatus('producing')} style={{ padding: '4px 8px', background: 'var(--red)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>กำลังผลิต</button>
-              <button onClick={() => bulkUpdateStatus('shipped')} style={{ padding: '4px 8px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>จัดส่งแล้ว</button>
-              <button onClick={() => bulkUpdateStatus('cancelled')} style={{ padding: '4px 8px', background: '#555', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>ยกเลิก</button>
+              <button onClick={() => requestBulkUpdateStatus('confirmed')} style={{ padding: '4px 8px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>ยืนยันแล้ว</button>
+              <button onClick={() => requestBulkUpdateStatus('producing')} style={{ padding: '4px 8px', background: 'var(--red)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>กำลังผลิต</button>
+              <button onClick={() => requestBulkUpdateStatus('shipped')} style={{ padding: '4px 8px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>จัดส่งแล้ว</button>
+              <button onClick={() => requestBulkUpdateStatus('cancelled')} style={{ padding: '4px 8px', background: '#555', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>ยกเลิก</button>
             </div>
           </div>
         )}
@@ -379,7 +417,7 @@ export default function AdminDashboard() {
                           </select>
                         </td>
                         <td>
-                          <button className="delete-btn" onClick={() => deleteOrder(o.id)}>ลบ</button>
+                          <button className="delete-btn" onClick={() => requestDeleteOrder(o.id)}>ลบ</button>
                         </td>
                       </tr>
                     ))
@@ -411,6 +449,19 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {confirmDialog.isOpen && (
+        <div className="modal-overlay" onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center', padding: '30px' }}>
+            <h2 style={{ color: 'var(--red)', marginBottom: '16px', fontSize: '24px' }}>⚠️ ยืนยันการทำรายการ</h2>
+            <p style={{ marginBottom: '24px', fontSize: '16px', color: '#ccc', lineHeight: '1.6' }}>{confirmDialog.message}</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="btn btn-ghost" onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}>ยกเลิก</button>
+              <button className="btn btn-primary" onClick={confirmDialog.onConfirm}>ตกลง</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
