@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   const prevOrderCountRef = useRef(0);
   const audioEnabledRef = useRef(false);
   const [audioEnabledState, setAudioEnabledState] = useState(false);
+  const audioCtxRef = useRef(null);
 
   // Custom Confirm Dialog
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
@@ -42,13 +43,53 @@ export default function AdminDashboard() {
   }, [searchTerm, statusFilter]);
 
   const enableAudio = () => {
-    const audio = new Audio('/audio/notification.ogg');
-    audio.play().then(() => {
-      audio.pause();
-      audio.currentTime = 0;
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+
+      // เล่นเสียง "ติ๊ง!" เพื่อยืนยันว่าเปิดเสียงแล้ว
+      playNotificationSound();
+
       audioEnabledRef.current = true;
       setAudioEnabledState(true);
-    }).catch(e => console.error('Audio enable failed:', e));
+    } catch (e) {
+      console.error('Audio enable failed:', e);
+    }
+  };
+
+  const playNotificationSound = () => {
+    if (!audioCtxRef.current) return;
+    try {
+      const now = audioCtxRef.current.currentTime;
+      
+      const osc1 = audioCtxRef.current.createOscillator();
+      const gain1 = audioCtxRef.current.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now);
+      gain1.gain.setValueAtTime(0.1, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(audioCtxRef.current.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      const osc2 = audioCtxRef.current.createOscillator();
+      const gain2 = audioCtxRef.current.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1108.73, now + 0.15);
+      gain2.gain.setValueAtTime(0.1, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc2.connect(gain2);
+      gain2.connect(audioCtxRef.current.destination);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.6);
+    } catch (e) {
+      console.error('Play sound failed:', e);
+    }
   };
 
   const fetchOrders = async (showLoading = true) => {
@@ -61,8 +102,7 @@ export default function AdminDashboard() {
         // เล่นเสียงแจ้งเตือนถ้ามีออเดอร์ใหม่เข้ามา
         if (prevOrderCountRef.current > 0 && data.length > prevOrderCountRef.current) {
           if (audioEnabledRef.current) {
-            const audio = new Audio('/audio/notification.ogg');
-            audio.play().catch(e => console.log('Audio play blocked:', e));
+            playNotificationSound();
           }
         }
         prevOrderCountRef.current = data.length;
