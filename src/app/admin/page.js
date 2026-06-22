@@ -12,7 +12,8 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const prevOrderCountRef = useRef(0);
-  const [audioEnabled, setAudioEnabled] = useState(false);
+  const audioEnabledRef = useRef(false);
+  const [audioEnabledState, setAudioEnabledState] = useState(false);
 
   // Custom Confirm Dialog
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
@@ -45,8 +46,9 @@ export default function AdminDashboard() {
     audio.play().then(() => {
       audio.pause();
       audio.currentTime = 0;
-      setAudioEnabled(true);
-    }).catch(e => console.error(e));
+      audioEnabledRef.current = true;
+      setAudioEnabledState(true);
+    }).catch(e => console.error('Audio enable failed:', e));
   };
 
   const fetchOrders = async (showLoading = true) => {
@@ -58,7 +60,7 @@ export default function AdminDashboard() {
         
         // เล่นเสียงแจ้งเตือนถ้ามีออเดอร์ใหม่เข้ามา
         if (prevOrderCountRef.current > 0 && data.length > prevOrderCountRef.current) {
-          if (audioEnabled) {
+          if (audioEnabledRef.current) {
             const audio = new Audio('/audio/notification.ogg');
             audio.play().catch(e => console.log('Audio play blocked:', e));
           }
@@ -256,7 +258,7 @@ export default function AdminDashboard() {
         <div className="admin-header">
           <h1>จัดการคำสั่งซื้อ (Pre-Order)</h1>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            {!audioEnabled ? (
+            {!audioEnabledState ? (
               <button className="btn btn-ghost" onClick={enableAudio} style={{ fontSize: '13px', padding: '6px 12px', borderColor: 'var(--gold)', color: 'var(--gold)' }}>
                 🔔 เปิดเสียงแจ้งเตือน
               </button>
