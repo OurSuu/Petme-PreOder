@@ -12,6 +12,7 @@ export default function PreOrderModal({ product, onClose, user }) {
   const [success, setSuccess] = useState(false);
   const [orderId, setOrderId] = useState(null);
   const [error, setError] = useState('');
+  const [missingFields, setMissingFields] = useState([]);
 
   const formatPhoneNumber = (value) => {
     const phoneNumber = value.replace(/\D/g, '');
@@ -30,6 +31,9 @@ export default function PreOrderModal({ product, onClose, user }) {
       value = formatPhoneNumber(value);
     }
     setForm({ ...form, [name]: value });
+    if (missingFields.includes(name)) {
+      setMissingFields(missingFields.filter(f => f !== name));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -37,11 +41,25 @@ export default function PreOrderModal({ product, onClose, user }) {
     setSubmitting(true);
     setError('');
     
+    // Check required fields manually
+    const requiredFields = ['customerName', 'phone', 'houseNo', 'subDistrict', 'district', 'province', 'postalCode'];
+    const missing = requiredFields.filter(field => !form[field] || String(form[field]).trim() === '');
+    
+    if (missing.length > 0) {
+      setMissingFields(missing);
+      setError('กรุณากรอกข้อมูลในช่องที่มีแถบสีแดงให้ครบถ้วน');
+      setSubmitting(false);
+      return;
+    }
+
     if (form.phone.length !== 12) {
+      setMissingFields(['phone']);
       setError('กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก');
       setSubmitting(false);
       return;
     }
+
+    setMissingFields([]);
 
     try {
       const res = await fetch('/api/orders', {
@@ -133,16 +151,16 @@ export default function PreOrderModal({ product, onClose, user }) {
             <span className="price-new">{product.price} <sup>฿</sup></span>
           </div>
         </div>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           {/* ข้อมูลลูกค้า */}
           <div className="form-group">
             <label>ชื่อ-นามสกุล *</label>
-            <input name="customerName" value={form.customerName} onChange={handleChange} required placeholder="ชื่อผู้รับ" />
+            <input name="customerName" className={missingFields.includes('customerName') ? 'invalid-field' : ''} value={form.customerName} onChange={handleChange} required placeholder="ชื่อผู้รับ" />
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>เบอร์โทร * (10 หลัก)</label>
-              <input name="phone" value={form.phone} onChange={handleChange} required placeholder="000-000-0000" maxLength="12" />
+              <input name="phone" className={missingFields.includes('phone') ? 'invalid-field' : ''} value={form.phone} onChange={handleChange} required placeholder="000-000-0000" maxLength="12" />
             </div>
             <div className="form-group">
               <label>LINE ID</label>
@@ -158,7 +176,7 @@ export default function PreOrderModal({ product, onClose, user }) {
           <div className="form-row">
             <div className="form-group">
               <label>บ้านเลขที่ *</label>
-              <input name="houseNo" value={form.houseNo} onChange={handleChange} required placeholder="เช่น 123/4" />
+              <input name="houseNo" className={missingFields.includes('houseNo') ? 'invalid-field' : ''} value={form.houseNo} onChange={handleChange} required placeholder="เช่น 123/4" />
             </div>
             <div className="form-group">
               <label>หมู่</label>
@@ -172,22 +190,22 @@ export default function PreOrderModal({ product, onClose, user }) {
             </div>
             <div className="form-group">
               <label>ตำบล / แขวง *</label>
-              <input name="subDistrict" value={form.subDistrict} onChange={handleChange} required placeholder="ตำบล" />
+              <input name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange} required placeholder="ตำบล" />
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>อำเภอ / เขต *</label>
-              <input name="district" value={form.district} onChange={handleChange} required placeholder="อำเภอ" />
+              <input name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange} required placeholder="อำเภอ" />
             </div>
             <div className="form-group">
               <label>จังหวัด *</label>
-              <input name="province" value={form.province} onChange={handleChange} required placeholder="จังหวัด" />
+              <input name="province" className={missingFields.includes('province') ? 'invalid-field' : ''} value={form.province} onChange={handleChange} required placeholder="จังหวัด" />
             </div>
           </div>
           <div className="form-group">
             <label>รหัสไปรษณีย์ *</label>
-            <input name="postalCode" value={form.postalCode} onChange={handleChange} required placeholder="เช่น 10110" maxLength="5" />
+            <input name="postalCode" className={missingFields.includes('postalCode') ? 'invalid-field' : ''} value={form.postalCode} onChange={handleChange} required placeholder="เช่น 10110" maxLength="5" />
           </div>
 
           {/* ข้อมูลสินค้า */}
@@ -226,7 +244,11 @@ export default function PreOrderModal({ product, onClose, user }) {
             <textarea name="note" value={form.note} onChange={handleChange} placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)" />
           </div>
 
-          {error && <p style={{color:'var(--red)', fontSize:'13px', textAlign:'center', marginTop:'10px'}}>{error}</p>}
+          {error && (
+            <div className="alert-error">
+              <span>⚠️</span> {error}
+            </div>
+          )}
           
           <button type="submit" className="btn btn-primary" disabled={submitting} style={{marginTop: '20px', width: '100%', justifyContent: 'center'}}>
             {submitting ? 'กำลังบันทึกคำสั่งซื้อ...' : 'ยืนยันสั่งจอง'}

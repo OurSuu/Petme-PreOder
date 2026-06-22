@@ -59,7 +59,11 @@ export default function LoginPage() {
               style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}
             />
           </div>
-          {error && <p style={{ color: 'var(--red)', fontSize: '14px', marginBottom: '20px', textAlign: 'center' }}>{error}</p>}
+          {error && (
+            <div className="alert-error" style={{ marginBottom: '20px' }}>
+              <span>⚠️</span> {error}
+            </div>
+          )}
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', padding: '12px', justifyContent: 'center', fontSize: '16px' }}>
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
           </button>

@@ -95,7 +95,11 @@ export default function RegisterPage() {
               placeholder="0891234567"
             />
           </div>
-          {error && <p style={{ color: 'var(--red)', fontSize: '14px', marginBottom: '20px', textAlign: 'center' }}>{error}</p>}
+          {error && (
+            <div className="alert-error" style={{ marginBottom: '20px' }}>
+              <span>⚠️</span> {error}
+            </div>
+          )}
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', padding: '12px', justifyContent: 'center', fontSize: '16px' }}>
             {loading ? 'กำลังสมัครสมาชิก...' : 'ยืนยันการสมัคร'}
           </button>
