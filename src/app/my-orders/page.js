@@ -8,6 +8,7 @@ export default function MyOrdersPage() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
+    let intervalId;
     // Check auth
     fetch('/api/auth/me')
       .then(res => res.json())
@@ -16,13 +17,19 @@ export default function MyOrdersPage() {
           window.location.href = '/login';
         } else {
           setUser(data.user);
-          fetchOrders();
+          fetchOrders(true);
+          intervalId = setInterval(() => fetchOrders(false), 10000); // Poll every 10s
         }
       })
       .catch(() => window.location.href = '/login');
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await fetch('/api/my-orders');
       if (res.ok) {
@@ -32,7 +39,7 @@ export default function MyOrdersPage() {
     } catch (err) {
       console.error('Failed to fetch orders');
     }
-    setLoading(false);
+    if (showLoading) setLoading(false);
   };
 
   const getStatusBadge = (status) => {

@@ -22,7 +22,11 @@ export default function AdminDashboard() {
   const [selectedOrders, setSelectedOrders] = useState([]);
 
   useEffect(() => {
-    if (isAuthenticated) fetchOrders();
+    if (isAuthenticated) {
+      fetchOrders(true);
+      const intervalId = setInterval(() => fetchOrders(false), 10000); // Poll every 10s
+      return () => clearInterval(intervalId);
+    }
   }, [isAuthenticated]);
 
   // เมื่อเปลี่ยนฟิลเตอร์หรือคำค้น ให้กลับไปหน้าแรก
@@ -31,8 +35,8 @@ export default function AdminDashboard() {
     setSelectedOrders([]);
   }, [searchTerm, statusFilter]);
 
-  const fetchOrders = async () => {
-    setLoading(true);
+  const fetchOrders = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await fetch('/api/orders');
       if (res.ok) {
@@ -42,7 +46,7 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err);
     }
-    setLoading(false);
+    if (showLoading) setLoading(false);
   };
 
   const handleLogin = async (e) => {
