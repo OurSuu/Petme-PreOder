@@ -270,6 +270,7 @@ export default function AdminDashboard() {
               <option value="confirmed">ยืนยันแล้ว</option>
               <option value="producing">กำลังผลิต</option>
               <option value="shipped">จัดส่งแล้ว</option>
+              <option value="cancelled">ยกเลิกแล้ว</option>
             </select>
           </div>
 
@@ -289,6 +290,7 @@ export default function AdminDashboard() {
               <button onClick={() => bulkUpdateStatus('confirmed')} style={{ padding: '4px 8px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>ยืนยันแล้ว</button>
               <button onClick={() => bulkUpdateStatus('producing')} style={{ padding: '4px 8px', background: 'var(--red)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>กำลังผลิต</button>
               <button onClick={() => bulkUpdateStatus('shipped')} style={{ padding: '4px 8px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>จัดส่งแล้ว</button>
+              <button onClick={() => bulkUpdateStatus('cancelled')} style={{ padding: '4px 8px', background: '#555', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>ยกเลิก</button>
             </div>
           </div>
         )}
@@ -360,6 +362,7 @@ export default function AdminDashboard() {
                             <option value="confirmed">ยืนยันแล้ว</option>
                             <option value="producing">กำลังผลิต</option>
                             <option value="shipped">จัดส่งแล้ว</option>
+                            <option value="cancelled">ยกเลิกแล้ว</option>
                           </select>
                         </td>
                         <td>

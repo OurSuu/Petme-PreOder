@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PreOrderModal from '@/components/PreOrderModal';
+import Link from 'next/link';
 
 const products = [
   { id: 1, name: 'PET ME — หน้างอ', desc: 'หน้าเอียงงงๆ เหมือนถามว่า "จะลูบเมื่อไหร่" ลายเด่นด้านหลังเสื้อ', image: '/images/PetMe_Chan01.png', price: 390, originalPrice: 550 },
@@ -10,6 +11,22 @@ const products = [
 
 export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) setUser(data.user);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null);
+    window.location.reload();
+  };
 
   return (
     <>
@@ -25,7 +42,19 @@ export default function Home() {
           <a href="#lookbook">ลุคบุ๊ก</a>
           <a href="#info">ข้อมูลสั่งซื้อ</a>
         </div>
-        <a href="#shop" className="nav-cta">พรีออเดอร์เลย</a>
+        <div className="nav-auth" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          {user ? (
+            <>
+              <Link href="/my-orders" style={{ color: 'var(--gold)', fontWeight: 'bold' }}>ออเดอร์ของฉัน</Link>
+              <button onClick={handleLogout} className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '13px' }}>ออกจากระบบ</button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" style={{ color: '#fff' }}>เข้าสู่ระบบ</Link>
+              <Link href="/register" className="nav-cta" style={{ background: 'var(--gold)', color: '#000' }}>สมัครสมาชิก</Link>
+            </>
+          )}
+        </div>
       </nav>
 
       {/* MARQUEE */}
@@ -201,7 +230,7 @@ export default function Home() {
 
       {/* MODAL */}
       {selectedProduct && (
-        <PreOrderModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+        <PreOrderModal product={selectedProduct} onClose={() => setSelectedProduct(null)} user={user} />
       )}
     </>
   );

@@ -1,18 +1,19 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 
-export default function PreOrderModal({ product, onClose }) {
+export default function PreOrderModal({ product, onClose, user }) {
   const [form, setForm] = useState({
-    customerName: '', phone: '', lineId: '', 
+    customerName: user?.name || '', phone: user?.phone || '', lineId: '', 
     houseNo: '', moo: '', soi: '', subDistrict: '', district: '', province: '', postalCode: '',
     color: 'สีขาว', size: 'M', quantity: 1, note: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [orderId, setOrderId] = useState(null);
   const [error, setError] = useState('');
 
   const formatPhoneNumber = (value) => {
-    // Remove all non-digits
     const phoneNumber = value.replace(/\D/g, '');
     const phoneNumberLength = phoneNumber.length;
     if (phoneNumberLength === 0) return '';
@@ -36,7 +37,6 @@ export default function PreOrderModal({ product, onClose }) {
     setSubmitting(true);
     setError('');
     
-    // Check phone length (must be 12 characters including dashes: 000-000-0000)
     if (form.phone.length !== 12) {
       setError('กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก');
       setSubmitting(false);
@@ -53,7 +53,10 @@ export default function PreOrderModal({ product, onClose }) {
           quantity: parseInt(form.quantity),
         }),
       });
+      const data = await res.json();
       if (!res.ok) throw new Error('Failed');
+      
+      setOrderId(data.id);
       setSuccess(true);
     } catch (err) {
       setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
@@ -61,14 +64,49 @@ export default function PreOrderModal({ product, onClose }) {
     setSubmitting(false);
   };
 
+  if (!user) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal" onClick={e => e.stopPropagation()}>
+          <button className="modal-close" onClick={onClose}>×</button>
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <h2 style={{ color: 'var(--gold)' }}>ต้องเข้าสู่ระบบก่อนสั่งจอง</h2>
+            <p style={{ marginTop: '10px', marginBottom: '20px', color: '#ccc' }}>
+              กรุณาเข้าสู่ระบบ หรือ สมัครสมาชิก เพื่อบันทึกคำสั่งซื้อ<br/>และเพื่อให้คุณติดตามสถานะออเดอร์ได้
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <Link href="/login" className="btn btn-ghost">เข้าสู่ระบบ</Link>
+              <Link href="/register" className="btn btn-primary" style={{ background: 'var(--gold)', color: '#000' }}>สมัครสมาชิก</Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal" onClick={e => e.stopPropagation()}>
           <button className="modal-close" onClick={onClose}>×</button>
-          <div className="success-msg">
-            <h2>✅ สั่งจองสำเร็จ!</h2>
-            <p>ขอบคุณที่สั่งจอง {product.name} (สี: {form.color})<br/>เราจะติดต่อกลับเพื่อยืนยันคำสั่งซื้อครับ</p>
+          <div className="success-msg" style={{ padding: '20px 0' }}>
+            <h2 style={{ color: 'var(--gold)', marginBottom: '10px' }}>✅ บันทึกคำสั่งซื้อสำเร็จ!</h2>
+            <p style={{ marginTop: '10px', marginBottom: '20px', lineHeight: '1.5', color: '#fff' }}>
+              กรุณากดปุ่มด้านล่างเพื่อแอด LINE แจ้งรหัสออเดอร์ <strong>#{orderId}</strong><br/>
+              และพูดคุยเพื่อยืนยันรายละเอียด/ชำระเงินกับทางร้าน
+            </p>
+            <a 
+              href="https://line.me/ti/p/~@petmeshirt" 
+              target="_blank" 
+              className="btn btn-primary"
+              style={{ display: 'inline-block', backgroundColor: '#00B900', color: 'white', border: 'none', padding: '12px 24px', fontSize: '16px' }}
+            >
+              แชทกับทางร้านผ่าน LINE
+            </a>
+            <p style={{ fontSize: '13px', marginTop: '20px', color: '#888' }}>
+              * สถานะจะเปลี่ยนเป็น "ยืนยันแล้ว" หลังจากทางร้านตรวจสอบในแชทเรียบร้อย<br/>
+              คุณสามารถดูสถานะออเดอร์ได้ที่เมนู "ออเดอร์ของฉัน"
+            </p>
           </div>
         </div>
       </div>
@@ -183,7 +221,7 @@ export default function PreOrderModal({ product, onClose }) {
           {error && <p style={{color:'var(--red)', fontSize:'13px', textAlign:'center', marginTop:'10px'}}>{error}</p>}
           
           <button type="submit" className="btn btn-primary" disabled={submitting} style={{marginTop: '20px', width: '100%', justifyContent: 'center'}}>
-            {submitting ? 'กำลังส่งข้อมูล...' : 'ยืนยันสั่งจอง'}
+            {submitting ? 'กำลังบันทึกคำสั่งซื้อ...' : 'ยืนยันสั่งจอง'}
           </button>
         </form>
       </div>
