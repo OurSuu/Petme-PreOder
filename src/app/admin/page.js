@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const audioEnabledRef = useRef(false);
   const [audioEnabledState, setAudioEnabledState] = useState(false);
   const audioCtxRef = useRef(null);
+  const isInitialLoadRef = useRef(true);
 
   // Custom Confirm Dialog
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
@@ -30,6 +31,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      isInitialLoadRef.current = true; // reset on login
       fetchOrders(true);
       const intervalId = setInterval(() => fetchOrders(false), 10000); // Poll every 10s
       return () => clearInterval(intervalId);
@@ -42,28 +44,12 @@ export default function AdminDashboard() {
     setSelectedOrders([]);
   }, [searchTerm, statusFilter]);
 
-  const enableAudio = () => {
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume();
-      }
-
-      // เล่นเสียง "ติ๊ง!" เพื่อยืนยันว่าเปิดเสียงแล้ว
-      playNotificationSound();
-
-      audioEnabledRef.current = true;
-      setAudioEnabledState(true);
-    } catch (e) {
-      console.error('Audio enable failed:', e);
-    }
-  };
-
-  const playNotificationSound = () => {
+  const playNotificationSound = async () => {
     if (!audioCtxRef.current) return;
     try {
+      if (audioCtxRef.current.state === 'suspended') {
+        await audioCtxRef.current.resume();
+      }
       const now = audioCtxRef.current.currentTime;
       
       const osc1 = audioCtxRef.current.createOscillator();
@@ -92,6 +78,22 @@ export default function AdminDashboard() {
     }
   };
 
+  const enableAudio = () => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      // เล่นเสียง "ติ๊ง!" เพื่อยืนยันว่าเปิดเสียงแล้ว
+      playNotificationSound();
+
+      audioEnabledRef.current = true;
+      setAudioEnabledState(true);
+    } catch (e) {
+      console.error('Audio enable failed:', e);
+    }
+  };
+
   const fetchOrders = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
@@ -99,13 +101,15 @@ export default function AdminDashboard() {
       if (res.ok) {
         const data = await res.json();
         
-        // เล่นเสียงแจ้งเตือนถ้ามีออเดอร์ใหม่เข้ามา
-        if (prevOrderCountRef.current > 0 && data.length > prevOrderCountRef.current) {
+        // เล่นเสียงแจ้งเตือนถ้ามีออเดอร์ใหม่เข้ามา (และไม่ใช่การโหลดครั้งแรกสุด)
+        if (!isInitialLoadRef.current && data.length > prevOrderCountRef.current) {
           if (audioEnabledRef.current) {
             playNotificationSound();
           }
         }
+        
         prevOrderCountRef.current = data.length;
+        isInitialLoadRef.current = false;
         
         setOrders(data);
       }
