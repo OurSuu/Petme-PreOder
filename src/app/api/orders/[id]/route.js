@@ -9,6 +9,23 @@ export async function PATCH(request, { params }) {
       where: { id: parseInt(id) },
       data: body,
     });
+
+    // Webhook Trigger: Only if status changed to 'paid' or 'confirmed'
+    if ((body.status === 'paid' || body.status === 'confirmed') && process.env.EXTERNAL_BACKEND_URL) {
+      try {
+        await fetch(process.env.EXTERNAL_BACKEND_URL, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.PETME_SECRET_TOKEN || ''
+          },
+          body: JSON.stringify(order)
+        });
+      } catch (webhookErr) {
+        console.error('Failed to send webhook to external backend:', webhookErr);
+      }
+    }
+
     return NextResponse.json(order);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });

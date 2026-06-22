@@ -8,7 +8,7 @@ export default function AdminDashboard() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -99,17 +99,17 @@ export default function AdminDashboard() {
   const bulkUpdateStatus = async (status) => {
     if (selectedOrders.length === 0) return;
     if (!confirm(`ต้องการเปลี่ยนสถานะ ${selectedOrders.length} รายการเป็น "${status}" ใช่หรือไม่?`)) return;
-    
+
     setLoading(true);
     // อัปเดตพร้อมกันหลายรายการ
-    await Promise.all(selectedOrders.map(id => 
+    await Promise.all(selectedOrders.map(id =>
       fetch(`/api/orders/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       })
     ));
-    
+
     setSelectedOrders([]);
     fetchOrders();
   };
@@ -182,14 +182,14 @@ export default function AdminDashboard() {
   orders.forEach(o => {
     const d = new Date(o.createdAt);
     const orderDate = d.toISOString().split('T')[0];
-    
+
     if (orderDate === today) {
       if (o.status === 'pending') todayPending++;
       if (o.status === 'confirmed') todayConfirmed++;
       if (o.status === 'producing') todayProducing++;
       if (o.status === 'shipped') todayShipped++;
     }
-    
+
     if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) monthCount += o.quantity;
     if (d.getFullYear() === thisYear) yearCount += o.quantity;
   });
@@ -198,9 +198,9 @@ export default function AdminDashboard() {
   const filteredOrders = orders.filter(o => {
     const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
     const searchStr = searchTerm.toLowerCase();
-    const matchesSearch = 
-      o.id.toString().includes(searchStr) || 
-      o.customerName.toLowerCase().includes(searchStr) || 
+    const matchesSearch =
+      o.id.toString().includes(searchStr) ||
+      o.customerName.toLowerCase().includes(searchStr) ||
       o.phone.includes(searchStr);
     return matchesStatus && matchesSearch;
   });
@@ -226,15 +226,15 @@ export default function AdminDashboard() {
           </div>
           <div className="stat-card confirmed">
             <div className="stat-label">ยืนยันแล้ว</div>
-            <div className="stat-value" style={{color: '#3b82f6'}}>{todayConfirmed}</div>
+            <div className="stat-value" style={{ color: '#3b82f6' }}>{todayConfirmed}</div>
           </div>
           <div className="stat-card producing">
             <div className="stat-label">กำลังผลิต</div>
-            <div className="stat-value" style={{color: 'var(--red)'}}>{todayProducing}</div>
+            <div className="stat-value" style={{ color: 'var(--red)' }}>{todayProducing}</div>
           </div>
           <div className="stat-card shipped">
             <div className="stat-label">จัดส่งแล้ว</div>
-            <div className="stat-value" style={{color: '#22c55e'}}>{todayShipped}</div>
+            <div className="stat-value" style={{ color: '#22c55e' }}>{todayShipped}</div>
           </div>
         </div>
 
@@ -253,17 +253,17 @@ export default function AdminDashboard() {
         {/* แถบเครื่องมือจัดการออเดอร์ */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <input 
-              type="text" 
-              placeholder="ค้นหาชื่อ, เบอร์โทร, หรือรหัส..." 
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อ, เบอร์โทร, หรือรหัส..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg-card)', color: '#fff' }}
             />
-            <select 
-              value={statusFilter} 
+            <select
+              value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg-card)', color: '#fff' }}
+              style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg-card)', color: '#000000ff' }}
             >
               <option value="all">ทุกสถานะ</option>
               <option value="pending">รอดำเนินการ</option>
@@ -272,7 +272,7 @@ export default function AdminDashboard() {
               <option value="shipped">จัดส่งแล้ว</option>
             </select>
           </div>
-          
+
           <div>
             <button className="btn btn-primary" onClick={downloadCSV} style={{ padding: '8px 16px', fontSize: '14px' }}>
               📥 Export Excel (CSV)
@@ -302,10 +302,10 @@ export default function AdminDashboard() {
                 <thead>
                   <tr>
                     <th>
-                      <input 
-                        type="checkbox" 
-                        onChange={handleSelectAll} 
-                        checked={selectedOrders.length === currentItems.length && currentItems.length > 0} 
+                      <input
+                        type="checkbox"
+                        onChange={handleSelectAll}
+                        checked={selectedOrders.length === currentItems.length && currentItems.length > 0}
                       />
                     </th>
                     <th>รหัส</th>
@@ -327,10 +327,10 @@ export default function AdminDashboard() {
                     currentItems.map(o => (
                       <tr key={o.id}>
                         <td>
-                          <input 
-                            type="checkbox" 
-                            checked={selectedOrders.includes(o.id)} 
-                            onChange={() => handleSelectOrder(o.id)} 
+                          <input
+                            type="checkbox"
+                            checked={selectedOrders.includes(o.id)}
+                            onChange={() => handleSelectOrder(o.id)}
                           />
                         </td>
                         <td>#{o.id}</td>
@@ -338,21 +338,21 @@ export default function AdminDashboard() {
                         <td>{o.customerName}</td>
                         <td>
                           {o.phone}
-                          {o.lineId && <div><small style={{color:'var(--gold)'}}>LINE: {o.lineId}</small></div>}
+                          {o.lineId && <div><small style={{ color: 'var(--gold)' }}>LINE: {o.lineId}</small></div>}
                         </td>
                         <td style={{ maxWidth: '200px', lineHeight: '1.4' }}>
-                          บ้านเลขที่ {o.houseNo} 
-                          {o.moo && ` ม.${o.moo}`} 
-                          {o.soi && ` ซ.${o.soi}`} <br/>
-                          ต.{o.subDistrict} อ.{o.district} <br/>
+                          บ้านเลขที่ {o.houseNo}
+                          {o.moo && ` ม.${o.moo}`}
+                          {o.soi && ` ซ.${o.soi}`} <br />
+                          ต.{o.subDistrict} อ.{o.district} <br />
                           จ.{o.province} {o.postalCode}
                         </td>
                         <td>{o.productName}</td>
                         <td>{o.size} / {o.color} / x{o.quantity}</td>
                         <td>{o.totalPrice} ฿</td>
                         <td>
-                          <select 
-                            className="status-select" 
+                          <select
+                            className="status-select"
                             value={o.status}
                             onChange={(e) => updateStatus(o.id, e.target.value)}
                           >
@@ -374,16 +374,16 @@ export default function AdminDashboard() {
               {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', gap: '15px' }}>
-                  <button 
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                     style={{ padding: '8px 16px', borderRadius: '4px', background: currentPage === 1 ? 'var(--bg)' : 'var(--bg-card)', color: '#fff', border: '1px solid var(--line)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
                   >
                     ก่อนหน้า
                   </button>
                   <span>หน้าที่ {currentPage} จาก {totalPages}</span>
-                  <button 
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                     style={{ padding: '8px 16px', borderRadius: '4px', background: currentPage === totalPages ? 'var(--bg)' : 'var(--bg-card)', color: '#fff', border: '1px solid var(--line)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
                   >

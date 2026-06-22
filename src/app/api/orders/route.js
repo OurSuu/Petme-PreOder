@@ -33,18 +33,7 @@ export async function POST(request) {
       }
     });
     
-    // ยิงข้อมูลไปที่ External Backend (Webhook) หากตั้งค่าไว้
-    if (process.env.EXTERNAL_BACKEND_URL) {
-      try {
-        await fetch(process.env.EXTERNAL_BACKEND_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(order)
-        });
-      } catch (webhookErr) {
-        console.error('Failed to send webhook to external backend:', webhookErr);
-      }
-    }
+    // Removed webhook trigger from creation route, moved to update route (paid status)
     
     return NextResponse.json(order, { status: 201 });
   } catch (error) {
