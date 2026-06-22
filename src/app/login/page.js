@@ -14,6 +14,12 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+    if (!form.username.trim() || !form.password.trim()) {
+      setError('กรุณากรอก Username และ Password ให้ครบถ้วน');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -38,12 +44,11 @@ export default function LoginPage() {
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div className="login-box" style={{ width: '100%', maxWidth: '400px', background: 'var(--bg-card)', padding: '40px', borderRadius: '16px', border: '1px solid var(--line)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
         <h2 style={{ textAlign: 'center', color: 'var(--gold)', marginBottom: '30px' }}>เข้าสู่ระบบ</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>Username / เบอร์โทรศัพท์</label>
             <input 
               type="text" 
-              required 
               value={form.username}
               onChange={(e) => setForm({...form, username: e.target.value})}
               style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}
@@ -53,7 +58,6 @@ export default function LoginPage() {
             <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>Password</label>
             <input 
               type="password" 
-              required 
               value={form.password}
               onChange={(e) => setForm({...form, password: e.target.value})}
               style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}

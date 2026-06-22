@@ -14,6 +14,12 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
 
+    if (!form.username.trim() || !form.password.trim() || !form.name.trim() || !form.phone.trim()) {
+      setError('กรุณากรอกข้อมูลให้ครบถ้วน');
+      setLoading(false);
+      return;
+    }
+
     // Format phone if provided
     let phoneNum = form.phone.replace(/\D/g, '');
     if (phoneNum.length > 0 && phoneNum.length !== 10) {
@@ -49,12 +55,11 @@ export default function RegisterPage() {
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div className="login-box" style={{ width: '100%', maxWidth: '400px', background: 'var(--bg-card)', padding: '40px', borderRadius: '16px', border: '1px solid var(--line)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
         <h2 style={{ textAlign: 'center', color: 'var(--gold)', marginBottom: '30px' }}>สมัครสมาชิก</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>Username * <small>(ใช้สำหรับ Login)</small></label>
             <input 
               type="text" 
-              required 
               value={form.username}
               onChange={(e) => setForm({...form, username: e.target.value})}
               style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}
@@ -65,7 +70,6 @@ export default function RegisterPage() {
             <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>Password *</label>
             <input 
               type="password" 
-              required 
               value={form.password}
               onChange={(e) => setForm({...form, password: e.target.value})}
               style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}
@@ -76,7 +80,6 @@ export default function RegisterPage() {
             <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>ชื่อ-นามสกุล *</label>
             <input 
               type="text" 
-              required 
               value={form.name}
               onChange={(e) => setForm({...form, name: e.target.value})}
               style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}
@@ -87,7 +90,6 @@ export default function RegisterPage() {
             <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>เบอร์โทรศัพท์ * (10 หลัก)</label>
             <input 
               type="text" 
-              required 
               maxLength="10"
               value={form.phone}
               onChange={(e) => setForm({...form, phone: e.target.value.replace(/\D/g, '')})}

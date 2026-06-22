@@ -155,12 +155,12 @@ export default function PreOrderModal({ product, onClose, user }) {
           {/* ข้อมูลลูกค้า */}
           <div className="form-group">
             <label>ชื่อ-นามสกุล *</label>
-            <input name="customerName" className={missingFields.includes('customerName') ? 'invalid-field' : ''} value={form.customerName} onChange={handleChange} required placeholder="ชื่อผู้รับ" />
+            <input name="customerName" className={missingFields.includes('customerName') ? 'invalid-field' : ''} value={form.customerName} onChange={handleChange} placeholder="ชื่อผู้รับ" />
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>เบอร์โทร * (10 หลัก)</label>
-              <input name="phone" className={missingFields.includes('phone') ? 'invalid-field' : ''} value={form.phone} onChange={handleChange} required placeholder="000-000-0000" maxLength="12" />
+              <input name="phone" className={missingFields.includes('phone') ? 'invalid-field' : ''} value={form.phone} onChange={handleChange} placeholder="000-000-0000" maxLength="12" />
             </div>
             <div className="form-group">
               <label>LINE ID</label>
@@ -176,7 +176,7 @@ export default function PreOrderModal({ product, onClose, user }) {
           <div className="form-row">
             <div className="form-group">
               <label>บ้านเลขที่ *</label>
-              <input name="houseNo" className={missingFields.includes('houseNo') ? 'invalid-field' : ''} value={form.houseNo} onChange={handleChange} required placeholder="เช่น 123/4" />
+              <input name="houseNo" className={missingFields.includes('houseNo') ? 'invalid-field' : ''} value={form.houseNo} onChange={handleChange} placeholder="เช่น 123/4" />
             </div>
             <div className="form-group">
               <label>หมู่</label>
@@ -190,22 +190,22 @@ export default function PreOrderModal({ product, onClose, user }) {
             </div>
             <div className="form-group">
               <label>ตำบล / แขวง *</label>
-              <input name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange} required placeholder="ตำบล" />
+              <input name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange} placeholder="ตำบล" />
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>อำเภอ / เขต *</label>
-              <input name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange} required placeholder="อำเภอ" />
+              <input name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange} placeholder="อำเภอ" />
             </div>
             <div className="form-group">
               <label>จังหวัด *</label>
-              <input name="province" className={missingFields.includes('province') ? 'invalid-field' : ''} value={form.province} onChange={handleChange} required placeholder="จังหวัด" />
+              <input name="province" className={missingFields.includes('province') ? 'invalid-field' : ''} value={form.province} onChange={handleChange} placeholder="จังหวัด" />
             </div>
           </div>
           <div className="form-group">
             <label>รหัสไปรษณีย์ *</label>
-            <input name="postalCode" className={missingFields.includes('postalCode') ? 'invalid-field' : ''} value={form.postalCode} onChange={handleChange} required placeholder="เช่น 10110" maxLength="5" />
+            <input name="postalCode" className={missingFields.includes('postalCode') ? 'invalid-field' : ''} value={form.postalCode} onChange={handleChange} placeholder="เช่น 10110" maxLength="5" />
           </div>
 
           {/* ข้อมูลสินค้า */}
