@@ -10,8 +10,8 @@ export async function PATCH(request, { params }) {
       data: body,
     });
 
-    // Webhook Trigger: Only if status changed to 'paid' or 'confirmed'
-    if ((body.status === 'paid' || body.status === 'confirmed') && process.env.EXTERNAL_BACKEND_URL) {
+    // Webhook Trigger: Only if status changed to 'paid', 'confirmed', or 'shipped'
+    if ((body.status === 'paid' || body.status === 'confirmed' || body.status === 'shipped') && process.env.EXTERNAL_BACKEND_URL) {
       try {
         await fetch(process.env.EXTERNAL_BACKEND_URL, {
           method: 'POST',
