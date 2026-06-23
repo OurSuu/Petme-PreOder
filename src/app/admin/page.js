@@ -12,8 +12,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const prevOrderCountRef = useRef(0);
-  const audioEnabledRef = useRef(false);
-  const [audioEnabledState, setAudioEnabledState] = useState(false);
+  const audioEnabledRef = useRef(true);
   const audioCtxRef = useRef(null);
   const isInitialLoadRef = useRef(true);
 
@@ -28,6 +27,30 @@ export default function AdminDashboard() {
 
   // การจัดการเลือกหลายรายการ (Bulk Actions)
   const [selectedOrders, setSelectedOrders] = useState([]);
+
+  // พยายามเปิด AudioContext อัตโนมัติเมื่อมีการคลิกหรือกดคีย์บอร์ดครั้งแรก
+  useEffect(() => {
+    const initAudio = () => {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume();
+        }
+      } catch (e) {
+        console.error('Audio init failed:', e);
+      }
+    };
+    
+    document.addEventListener('click', initAudio, { once: true });
+    document.addEventListener('keydown', initAudio, { once: true });
+    
+    return () => {
+      document.removeEventListener('click', initAudio);
+      document.removeEventListener('keydown', initAudio);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -45,7 +68,16 @@ export default function AdminDashboard() {
   }, [searchTerm, statusFilter]);
 
   const playNotificationSound = async () => {
-    if (!audioCtxRef.current) return;
+    if (!audioCtxRef.current) {
+      // ถ้าไม่มี AudioContext ให้พยายามสร้างขึ้นมาใหม่
+      try {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {
+        console.error('Cannot create AudioContext:', e);
+        return;
+      }
+    }
+    
     try {
       if (audioCtxRef.current.state === 'suspended') {
         await audioCtxRef.current.resume();
@@ -75,22 +107,6 @@ export default function AdminDashboard() {
       osc2.stop(now + 0.6);
     } catch (e) {
       console.error('Play sound failed:', e);
-    }
-  };
-
-  const enableAudio = () => {
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      
-      // เล่นเสียง "ติ๊ง!" เพื่อยืนยันว่าเปิดเสียงแล้ว
-      playNotificationSound();
-
-      audioEnabledRef.current = true;
-      setAudioEnabledState(true);
-    } catch (e) {
-      console.error('Audio enable failed:', e);
     }
   };
 
@@ -302,15 +318,6 @@ export default function AdminDashboard() {
         <div className="admin-header">
           <h1>จัดการคำสั่งซื้อ (Pre-Order)</h1>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            {!audioEnabledState ? (
-              <button className="btn btn-ghost" onClick={enableAudio} style={{ fontSize: '13px', padding: '6px 12px', borderColor: 'var(--gold)', color: 'var(--gold)' }}>
-                🔔 เปิดเสียงแจ้งเตือน
-              </button>
-            ) : (
-              <span style={{ fontSize: '13px', color: '#22c55e', padding: '6px 12px', border: '1px solid #22c55e', borderRadius: '4px' }}>
-                🔔 เปิดเสียงแจ้งเตือนแล้ว
-              </span>
-            )}
             <button className="btn btn-ghost" onClick={() => setIsAuthenticated(false)}>Logout</button>
           </div>
         </div>
