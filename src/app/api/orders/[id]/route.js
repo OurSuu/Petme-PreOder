@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { pushMessage, getStatusMessage } from '@/lib/line';
 
 export async function PATCH(request, { params }) {
   try {
@@ -9,6 +10,14 @@ export async function PATCH(request, { params }) {
       where: { id: parseInt(id) },
       data: body,
     });
+
+    // ถ้ามีการเปลี่ยนสถานะ และออเดอร์นี้มี lineUid → ส่งแจ้งเตือนผ่าน LINE
+    if (body.status && order.lineUid) {
+      const statusMsg = getStatusMessage(order.id, body.status);
+      if (statusMsg) {
+        await pushMessage(order.lineUid, [{ type: 'text', text: statusMsg.text }]);
+      }
+    }
 
     // Webhook Trigger: Send update to external backend for all changes
     if (process.env.EXTERNAL_BACKEND_URL) {

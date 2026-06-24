@@ -4,6 +4,16 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_for_dev_petme';
 
+// สร้าง Secure Token สำหรับผูก LINE (รูปแบบ: PETME-XXXXXX)
+function generateSecureToken() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // ตัดตัวที่สับสนออก (0,O,1,I)
+  let result = 'PETME-';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 export async function GET() {
   try {
     const orders = await prisma.order.findMany({ orderBy: { createdAt: 'desc' } });
@@ -40,12 +50,16 @@ export async function POST(request) {
         console.error('Invalid token during order creation');
       }
     }
+
+    // สร้าง Secure Token สำหรับผูก LINE
+    const secureToken = generateSecureToken();
     
     const order = await prisma.order.create({
       data: { 
         customerId,
         customerName, phone, houseNo, moo: moo || null, soi: soi || null, subDistrict, district, province, postalCode, 
-        lineId: lineId || null, productName, color, size, quantity: qty, totalPrice, note: note || null 
+        lineId: lineId || null, productName, color, size, quantity: qty, totalPrice, note: note || null,
+        secureToken,
       }
     });
     

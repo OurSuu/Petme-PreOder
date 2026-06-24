@@ -11,6 +11,7 @@ export default function PreOrderModal({ product, onClose, user }) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [orderId, setOrderId] = useState(null);
+  const [secureToken, setSecureToken] = useState(null);
   const [error, setError] = useState('');
   const [missingFields, setMissingFields] = useState([]);
 
@@ -75,6 +76,7 @@ export default function PreOrderModal({ product, onClose, user }) {
       if (!res.ok) throw new Error('Failed');
       
       setOrderId(data.id);
+      setSecureToken(data.secureToken);
       setSuccess(true);
     } catch (err) {
       setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
@@ -103,6 +105,8 @@ export default function PreOrderModal({ product, onClose, user }) {
   }
 
   if (success) {
+    const lineLink = `https://line.me/R/oaMessage/@248nhztl/?${encodeURIComponent(secureToken || '')}`;
+    
     return (
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
@@ -110,27 +114,30 @@ export default function PreOrderModal({ product, onClose, user }) {
           <div className="success-msg" style={{ padding: '20px 0' }}>
             <h2 style={{ color: 'var(--gold)', marginBottom: '10px', fontSize: '28px' }}>✅ บันทึกคำสั่งซื้อสำเร็จ!</h2>
             
-            <p style={{ marginTop: '15px', color: '#ccc', fontSize: '16px' }}>กรุณาจำรหัสออเดอร์ด้านล่างนี้เพื่อแจ้งกับทางร้าน</p>
-            
             <div style={{ background: 'rgba(212,175,55,0.1)', border: '2px dashed var(--gold)', borderRadius: '12px', padding: '20px', margin: '20px auto', display: 'inline-block', minWidth: '250px' }}>
               <span style={{ display: 'block', fontSize: '14px', color: '#aaa', marginBottom: '8px' }}>รหัสออเดอร์ของคุณ</span>
               <span style={{ fontSize: '42px', fontWeight: '900', color: 'var(--gold)', letterSpacing: '2px', textShadow: '0 2px 10px rgba(212,175,55,0.3)' }}>#{orderId}</span>
             </div>
-            
-            <p style={{ marginBottom: '24px', color: '#fff', fontSize: '15px' }}>
-              กรุณากดปุ่มด้านล่างเพื่อแอด LINE และพูดคุย<br/>เพื่อยืนยันรายละเอียด/ชำระเงิน
-            </p>
 
-            <a 
-              href="https://line.me/ti/p/~@petmeshirt" 
-              target="_blank" 
-              className="btn btn-primary"
-              style={{ display: 'inline-block', backgroundColor: '#00B900', color: 'white', border: 'none', padding: '16px 32px', fontSize: '18px', fontWeight: 'bold', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0, 185, 0, 0.4)' }}
-            >
-              แชทกับทางร้านผ่าน LINE
-            </a>
-            <p style={{ fontSize: '13px', marginTop: '24px', color: '#888' }}>
-              * สถานะจะเปลี่ยนเป็น "ยืนยันแล้ว" หลังจากทางร้านตรวจสอบในแชทเรียบร้อย<br/>
+            <div style={{ background: 'rgba(0,185,0,0.08)', border: '1px solid rgba(0,185,0,0.3)', borderRadius: '12px', padding: '20px', margin: '20px 0' }}>
+              <p style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '16px', marginBottom: '8px' }}>📱 รับแจ้งเตือนสถานะผ่าน LINE</p>
+              <p style={{ color: '#ccc', fontSize: '14px', marginBottom: '16px', lineHeight: '1.6' }}>
+                กดปุ่มด้านล่างเพื่อเชื่อมต่อออเดอร์กับ LINE ของคุณ<br/>
+                ระบบจะส่งข้อความให้อัตโนมัติ คุณแค่กด "ส่ง" เท่านั้น!<br/>
+                หลังจากนั้นสามารถส่งสลิปชำระเงินผ่านแชทได้เลย
+              </p>
+              <a 
+                href={lineLink}
+                target="_blank" 
+                className="btn btn-primary"
+                style={{ display: 'inline-block', backgroundColor: '#00B900', color: 'white', border: 'none', padding: '16px 32px', fontSize: '18px', fontWeight: 'bold', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0, 185, 0, 0.4)', textDecoration: 'none' }}
+              >
+                🔔 รับแจ้งเตือนผ่าน LINE
+              </a>
+            </div>
+
+            <p style={{ fontSize: '13px', marginTop: '16px', color: '#888' }}>
+              * สถานะจะเปลี่ยนอัตโนมัติเมื่อทางร้านตรวจสอบสลิปเรียบร้อย<br/>
               คุณสามารถดูสถานะออเดอร์ได้ที่เมนู "ออเดอร์ของฉัน"
             </p>
           </div>

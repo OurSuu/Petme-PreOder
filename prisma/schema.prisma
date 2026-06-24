@@ -39,6 +39,8 @@ model Order {
   totalPrice   Float
   status       String   @default("pending")
   note         String?
+  secureToken  String?  @unique
+  lineUid      String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
