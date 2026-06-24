@@ -94,6 +94,30 @@ export async function POST(request) {
                 },
                 {
                   type: 'text',
+                  text: `คุณพร้อมชำระเงินเลยไหมคะ?\nหากพร้อมชำระเงิน รบกวนพิมพ์คำว่า "ชำระเงิน" เข้ามาได้เลยค่ะ เพื่อรับ QR Code โอนเงินค่ะ`
+                }
+              ]);
+            } else {
+              await replyMessage(replyToken, [{
+                type: 'text',
+                text: '❌ ไม่พบออเดอร์ที่ตรงกับรหัสนี้ค่ะ\n\nกรุณาตรวจสอบรหัสอีกครั้ง หรือกดปุ่ม "เชื่อมต่อ LINE" จากหน้าเว็บไซต์อีกครั้งค่ะ'
+              }]);
+            }
+            continue;
+          }
+
+          // ตรวจสอบว่าเป็นคำสั่งขอ QR Code ชำระเงินหรือไม่
+          if (text.includes('ชำระเงิน') || text.includes('พร้อมชำระ')) {
+            // ค้นหาออเดอร์ที่ผูกกับ LINE UID นี้ และสถานะ pending
+            const order = await prisma.order.findFirst({
+              where: { lineUid: userId, status: 'pending' },
+              orderBy: { createdAt: 'desc' }
+            });
+
+            if (order) {
+              await replyMessage(replyToken, [
+                {
+                  type: 'text',
                   text: `💳 รบกวนชำระเงินโดยสแกน QR Code ด้านล่างนี้ค่ะ\n(ยอดโอน ${order.totalPrice} บาท)\n\nเมื่อโอนเงินเรียบร้อยแล้ว สามารถส่งรูปสลิปเข้ามาในแชทนี้ได้เลยนะคะ ระบบจะตรวจสอบให้อัตโนมัติค่ะ`
                 },
                 {
@@ -103,9 +127,10 @@ export async function POST(request) {
                 }
               ]);
             } else {
+              // ถ้าไม่มีออเดอร์ที่ผูกไว้ หรือชำระไปแล้ว
               await replyMessage(replyToken, [{
                 type: 'text',
-                text: '❌ ไม่พบออเดอร์ที่ตรงกับรหัสนี้ค่ะ\n\nกรุณาตรวจสอบรหัสอีกครั้ง หรือกดปุ่ม "รับแจ้งเตือนผ่าน LINE" จากหน้าเว็บไซต์ค่ะ'
+                text: '❌ ไม่พบออเดอร์ที่รอชำระเงินของคุณค่ะ\n\nหากเพิ่งสั่งซื้อ กรุณาพิมพ์ "รหัสลับ" (เช่น PETME-ABCDEF) เพื่อเชื่อมต่อออเดอร์ก่อนนะคะ'
               }]);
             }
             continue;

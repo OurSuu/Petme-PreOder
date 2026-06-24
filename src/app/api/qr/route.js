@@ -2,6 +2,8 @@ import generatePayload from 'promptpay-qr';
 import qrcode from 'qrcode';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -29,7 +31,7 @@ export async function GET(request) {
       status: 200,
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Cache-Control': 'no-store, max-age=0',
       },
     });
   } catch (error) {
