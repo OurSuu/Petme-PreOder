@@ -123,29 +123,44 @@ export async function POST(request) {
 
           // ตรวจสอบว่าเป็นคำสั่งขอ QR Code ชำระเงินหรือไม่
           if (text.includes('ชำระเงิน') || text.includes('พร้อมชำระ')) {
-            // ค้นหาออเดอร์ที่ผูกกับ LINE UID นี้ และสถานะ pending
+            // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้
             const order = await prisma.order.findFirst({
-              where: { lineUid: userId, status: 'pending' },
+              where: { lineUid: userId },
               orderBy: { createdAt: 'desc' }
             });
 
             if (order) {
-              await replyMessage(replyToken, [
-                {
+              if (order.status === 'pending') {
+                await replyMessage(replyToken, [
+                  {
+                    type: 'text',
+                    text: `💳 รบกวนชำระเงินโดยสแกน QR Code ด้านล่างนี้ค่ะ\n(ยอดโอน ${order.totalPrice} บาท)\n\nเมื่อโอนเงินเรียบร้อยแล้ว สามารถส่งรูปสลิปเข้ามาในแชทนี้ได้เลยนะคะ ระบบจะตรวจสอบให้อัตโนมัติค่ะ`
+                  },
+                  {
+                    type: 'image',
+                    originalContentUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${order.totalPrice}`,
+                    previewImageUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${order.totalPrice}`
+                  }
+                ]);
+              } else {
+                let statusText = '✅ ได้ทำการชำระเงินเรียบร้อยแล้ว';
+                if (order.status === 'producing') statusText = '⚙️ กำลังดำเนินการผลิต';
+                if (order.status === 'shipped') statusText = '📦 จัดส่งเรียบร้อยแล้ว';
+                if (order.status === 'cancelled') statusText = '❌ ถูกยกเลิกแล้ว';
+                
+                let extraText = '(ไม่ต้องชำระเงินซ้ำค่ะ)';
+                if (order.status === 'shipped') extraText = 'ขอบคุณที่อุดหนุนนะคะ 🙏';
+
+                await replyMessage(replyToken, [{
                   type: 'text',
-                  text: `💳 รบกวนชำระเงินโดยสแกน QR Code ด้านล่างนี้ค่ะ\n(ยอดโอน ${order.totalPrice} บาท)\n\nเมื่อโอนเงินเรียบร้อยแล้ว สามารถส่งรูปสลิปเข้ามาในแชทนี้ได้เลยนะคะ ระบบจะตรวจสอบให้อัตโนมัติค่ะ`
-                },
-                {
-                  type: 'image',
-                  originalContentUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${order.totalPrice}`,
-                  previewImageUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${order.totalPrice}`
-                }
-              ]);
+                  text: `ออเดอร์ #${order.id} ของคุณ ${statusText}\n${extraText}`
+                }]);
+              }
             } else {
-              // ถ้าไม่มีออเดอร์ที่ผูกไว้ หรือชำระไปแล้ว
+              // ถ้าไม่มีออเดอร์ที่ผูกไว้เลย
               await replyMessage(replyToken, [{
                 type: 'text',
-                text: '❌ ไม่พบออเดอร์ที่รอชำระเงินของคุณค่ะ\n\nหากเพิ่งสั่งซื้อ กรุณาพิมพ์ "รหัสลับ" (เช่น PETME-ABCDEF) เพื่อเชื่อมต่อออเดอร์ก่อนนะคะ'
+                text: '❌ ไม่พบออเดอร์ของคุณค่ะ\n\nหากเพิ่งสั่งซื้อ กรุณาพิมพ์ "รหัสลับ" (เช่น PETME-ABCDEF) เพื่อเชื่อมต่อออเดอร์ก่อนนะคะ'
               }]);
             }
             continue;
@@ -163,18 +178,34 @@ export async function POST(request) {
 
         // --- รูปภาพ (Image) - ระบบตรวจสลิป ---
         if (msg.type === 'image') {
-          // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้ และยังไม่ได้ยืนยัน
+          // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้
           const order = await prisma.order.findFirst({
-            where: { lineUid: userId, status: 'pending' },
+            where: { lineUid: userId },
             orderBy: { createdAt: 'desc' }
           });
 
           if (!order) {
             await replyMessage(replyToken, [{
               type: 'text',
-              text: '❌ ไม่พบออเดอร์ที่รอชำระเงินค่ะ\n\nกรุณาเชื่อมต่อออเดอร์ก่อนโดยกดปุ่ม "รับแจ้งเตือนผ่าน LINE" จากหน้าเว็บไซต์ค่ะ'
+              text: '❌ ไม่พบออเดอร์ของคุณค่ะ\n\nกรุณาเชื่อมต่อออเดอร์ก่อนโดยกดปุ่ม "เชื่อมต่อ LINE" จากหน้าเว็บไซต์ค่ะ'
             }]);
             continue;
+          }
+
+          if (order.status !== 'pending') {
+             let statusText = '✅ ได้ทำการชำระเงินเรียบร้อยแล้ว';
+             if (order.status === 'producing') statusText = '⚙️ กำลังดำเนินการผลิต';
+             if (order.status === 'shipped') statusText = '📦 จัดส่งเรียบร้อยแล้ว';
+             if (order.status === 'cancelled') statusText = '❌ ถูกยกเลิกแล้ว';
+             
+             let extraText = '(ไม่ต้องส่งสลิปซ้ำค่ะ)';
+             if (order.status === 'shipped') extraText = 'ขอบคุณที่อุดหนุนนะคะ 🙏';
+
+             await replyMessage(replyToken, [{
+               type: 'text',
+               text: `ออเดอร์ #${order.id} ของคุณ ${statusText}\n${extraText}`
+             }]);
+             continue;
           }
 
           // ตรวจสอบว่ามี EasySlip API Key หรือไม่
