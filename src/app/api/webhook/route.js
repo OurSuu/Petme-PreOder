@@ -33,12 +33,33 @@ export async function POST(request) {
       const userId = event.source?.userId;
       const replyToken = event.replyToken;
 
+      // จัดการ Cooldown 3 ชั่วโมงสำหรับข้อความบอทอัตโนมัติทั่วไป
+      let lineUser = await prisma.lineUser.findUnique({ where: { uid: userId } });
+      const now = new Date();
+      let canSendGeneralReply = true;
+
+      if (lineUser) {
+        const diffHours = (now.getTime() - lineUser.lastActive.getTime()) / (1000 * 60 * 60);
+        if (diffHours < 3) {
+          canSendGeneralReply = false; // ยังไม่ถึง 3 ชั่วโมงนับจากที่ลูกค้าพิมพ์มาครั้งล่าสุด
+        }
+      }
+
+      // อัปเดตเวลาใช้งานล่าสุด (Reset Timer)
+      await prisma.lineUser.upsert({
+        where: { uid: userId },
+        update: { lastActive: now },
+        create: { uid: userId, lastActive: now },
+      });
+
       // === Event: ลูกค้าแอดไลน์ (Follow) ===
       if (event.type === 'follow') {
-        await replyMessage(replyToken, [{
-          type: 'text',
-          text: '🐾 สวัสดีค่ะ ยินดีต้อนรับสู่ PetMe!\n\nหากคุณเพิ่งสั่งซื้อสินค้าผ่านเว็บไซต์ กรุณากดปุ่ม "รับแจ้งเตือนผ่าน LINE" ในหน้าเว็บเพื่อเชื่อมต่อออเดอร์ของคุณค่ะ\n\nหลังจากเชื่อมต่อแล้ว ระบบจะแจ้งเตือนสถานะสินค้าอัตโนมัติผ่านแชทนี้ค่ะ ❤️'
-        }]);
+        if (canSendGeneralReply) {
+          await replyMessage(replyToken, [{
+            type: 'text',
+            text: 'ได้สั่งซื้อสินค้าผ่านเว็บไซต์ของเราหรือยังคะ? 🛒\n\n- หากยังไม่ได้สั่งซื้อ สามารถเลือกชมและสั่งซื้อได้ที่: https://petme-pre-oder.vercel.app\n- หากมีข้อสงสัยหรือต้องการสอบถามเพิ่มเติม สามารถพิมพ์ถามไว้ได้เลยค่ะ แอดมินจะรีบมาตอบนะคะ 😊\n\n⚠️ แต่หากคุณลูกค้าสั่งซื้อเรียบร้อยแล้ว:\nรบกวนพิมพ์ "รหัสลับ" ที่ได้จากหน้าเว็บ (เช่น PETME-ABCDEF) ส่งมาในแชทนี้ เพื่อเชื่อมต่อออเดอร์ค่ะ'
+          }]);
+        }
         continue;
       }
 
@@ -66,10 +87,21 @@ export async function POST(request) {
                 data: { lineUid: userId }
               });
 
-              await replyMessage(replyToken, [{
-                type: 'text',
-                text: `✅ เชื่อมต่อสำเร็จ!\n\n📦 ออเดอร์ #${order.id}\n👤 ${order.customerName}\n👕 ${order.productName} (${order.size} / ${order.color})\n💰 ยอดรวม ${order.totalPrice} บาท\n\nระบบจะแจ้งเตือนสถานะสินค้าอัตโนมัติผ่านแชทนี้ค่ะ\n\n💳 หากต้องการชำระเงิน กรุณาโอนเงินแล้วส่งรูปสลิปมาในแชทนี้ได้เลยค่ะ`
-              }]);
+              await replyMessage(replyToken, [
+                {
+                  type: 'text',
+                  text: `✅ เชื่อมต่อสำเร็จ!\n\n📦 ออเดอร์ #${order.id}\n👤 ${order.customerName}\n👕 ${order.productName} (${order.size} / ${order.color})\n💰 ยอดรวม ${order.totalPrice} บาท\n\nระบบจะแจ้งเตือนสถานะสินค้าอัตโนมัติผ่านแชทนี้ค่ะ`
+                },
+                {
+                  type: 'text',
+                  text: `💳 รบกวนชำระเงินโดยสแกน QR Code ด้านล่างนี้ค่ะ\n(ยอดโอน ${order.totalPrice} บาท)\n\nเมื่อโอนเงินเรียบร้อยแล้ว สามารถส่งรูปสลิปเข้ามาในแชทนี้ได้เลยนะคะ ระบบจะตรวจสอบให้อัตโนมัติค่ะ`
+                },
+                {
+                  type: 'image',
+                  originalContentUrl: 'https://petme-pre-oder.vercel.app/images/QRCODE.jpg',
+                  previewImageUrl: 'https://petme-pre-oder.vercel.app/images/QRCODE.jpg'
+                }
+              ]);
             } else {
               await replyMessage(replyToken, [{
                 type: 'text',
@@ -79,11 +111,13 @@ export async function POST(request) {
             continue;
           }
 
-          // ข้อความทั่วไป
-          await replyMessage(replyToken, [{
-            type: 'text',
-            text: '🐾 สวัสดีค่ะ!\n\nหากต้องการเชื่อมต่อออเดอร์ กรุณากดปุ่ม "รับแจ้งเตือนผ่าน LINE" จากหน้าเว็บไซต์ค่ะ\n\nหากต้องการแจ้งชำระเงิน กรุณาส่งรูปสลิปโอนเงินมาในแชทนี้ได้เลยค่ะ 📸'
-          }]);
+          // ข้อความทั่วไป (ถ้าแชทกันอยู่ จะไม่ส่งข้อความซ้ำ จนกว่าจะเงียบไป 3 ชม.)
+          if (canSendGeneralReply) {
+            await replyMessage(replyToken, [{
+              type: 'text',
+              text: 'ได้สั่งซื้อสินค้าผ่านเว็บไซต์ของเราหรือยังคะ? 🛒\n\n- หากยังไม่ได้สั่งซื้อ สามารถเลือกชมและสั่งซื้อได้ที่: https://petme-pre-oder.vercel.app\n- หากมีข้อสงสัยหรือต้องการสอบถามเพิ่มเติม สามารถพิมพ์ถามไว้ได้เลยค่ะ แอดมินจะรีบมาตอบนะคะ 😊\n\n⚠️ แต่หากคุณลูกค้าสั่งซื้อเรียบร้อยแล้ว:\nรบกวนพิมพ์ "รหัสลับ" ที่ได้จากหน้าเว็บ (เช่น PETME-ABCDEF) ส่งมาในแชทนี้ เพื่อเชื่อมต่อออเดอร์ค่ะ'
+            }]);
+          }
           continue;
         }
 

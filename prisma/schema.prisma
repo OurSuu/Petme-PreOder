@@ -45,6 +45,11 @@ model Order {
   updatedAt    DateTime @updatedAt
 }
 
+model LineUser {
+  uid         String   @id
+  lastActive  DateTime @default(now())
+}
+
 model audit_logs {
   id         Int      @id @default(autoincrement())
   user_id    Int?
