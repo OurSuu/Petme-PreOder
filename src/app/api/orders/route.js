@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 
+export const dynamic = 'force-dynamic';
+
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_for_dev_petme';
 
 // สร้าง Secure Token สำหรับผูก LINE (รูปแบบ: PETME-XXXXXX)
