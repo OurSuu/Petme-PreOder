@@ -107,10 +107,18 @@ export default function MyOrdersPage() {
                 {order.status === 'pending' && (
                   <div style={{ marginTop: '10px', padding: '16px', background: 'rgba(212,175,55,0.05)', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.2)' }}>
                     <p style={{ fontSize: '14px', marginBottom: '10px' }}>
-                      ออเดอร์นี้กำลังรอการยืนยันการชำระเงิน หากคุณยังไม่ได้ชำระเงิน กรุณาติดต่อเราผ่าน LINE พร้อมแจ้งรหัสออเดอร์ <strong>#{order.id}</strong>
+                      ออเดอร์นี้กำลังรอการชำระเงิน หากคุณโอนเงินแล้ว กรุณากดปุ่มด้านล่างเพื่อเชื่อมต่อกับ LINE ของร้าน และส่งสลิปเพื่อยืนยันอัตโนมัติค่ะ
                     </p>
-                    <a href="https://line.me/ti/p/~@petmeshirt" target="_blank" className="btn btn-ghost" style={{ fontSize: '13px', padding: '6px 12px', border: '1px solid var(--gold)', color: 'var(--gold)' }}>
-                      ติดต่อร้านผ่าน LINE
+                    {order.secureToken && (
+                      <p style={{ fontSize: '13px', color: '#aaa', marginBottom: '15px' }}>
+                        รหัสลับออเดอร์ของคุณคือ: <strong style={{ color: 'var(--gold)', letterSpacing: '1px' }}>{order.secureToken}</strong>
+                      </p>
+                    )}
+                    <a href={`https://line.me/R/oaMessage/@248nhztl/?${encodeURIComponent(order.secureToken || '')}`} target="_blank" className="btn btn-ghost" style={{ fontSize: '13px', padding: '8px 16px', border: '1px solid #00B900', color: '#fff', background: '#00B900', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.122.298.079.76.038 1.05l-.164 1.02c-.052.327-.246 1.186 1.041.644 1.286-.543 6.945-4.089 9.673-7.142C23.238 14.153 24 12.316 24 10.304z"/>
+                      </svg>
+                      เชื่อมต่อ LINE และแจ้งชำระเงิน
                     </a>
                   </div>
                 )}
