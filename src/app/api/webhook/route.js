@@ -87,6 +87,9 @@ export async function POST(request) {
                 data: { lineUid: userId }
               });
 
+              // อัปเดตเวลาให้เป็นออเดอร์ล่าสุดที่ถูก Active
+              await prisma.$executeRaw`UPDATE "Order" SET "updatedAt" = NOW() WHERE id = ${order.id}`;
+
               const replyMessages = [
                 {
                   type: 'text',
@@ -97,7 +100,7 @@ export async function POST(request) {
               if (order.status === 'pending') {
                 replyMessages.push({
                   type: 'text',
-                  text: `คุณพร้อมชำระเงินเลยไหมคะ?\nหากพร้อมชำระเงิน รบกวนพิมพ์คำว่า "ชำระเงิน" เข้ามาได้เลยค่ะ เพื่อรับ QR Code โอนเงินค่ะ`
+                  text: `คุณพร้อมชำระเงินเลยไหมคะ?\nหากพร้อมชำระเงิน รบกวนพิมพ์คำว่า "ชำระเงิน" เข้ามาได้เลยค่ะ เพื่อรับ QR Code โอนเงินค่ะ\n(หรือพิมพ์ "ยกเลิกออเดอร์" หากต้องการยกเลิกค่ะ)`
                 });
               } else {
                 let statusText = '✅ ยืนยันการชำระเงินแล้ว';
@@ -123,10 +126,10 @@ export async function POST(request) {
 
           // ตรวจสอบว่าเป็นคำสั่งขอ QR Code ชำระเงินหรือไม่
           if (text.includes('ชำระเงิน') || text.includes('พร้อมชำระ')) {
-            // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้
+            // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้ โดยเรียงตาม updatedAt
             const order = await prisma.order.findFirst({
               where: { lineUid: userId },
-              orderBy: { createdAt: 'desc' }
+              orderBy: { updatedAt: 'desc' }
             });
 
             if (order) {
@@ -134,7 +137,7 @@ export async function POST(request) {
                 await replyMessage(replyToken, [
                   {
                     type: 'text',
-                    text: `💳 สำหรับออเดอร์ #${order.id}\nรบกวนชำระเงินโดยสแกน QR Code ด้านล่างนี้ค่ะ\n(ยอดโอน ${order.totalPrice} บาท)\n\nเมื่อโอนเงินเรียบร้อยแล้ว สามารถส่งรูปสลิปเข้ามาในแชทนี้ได้เลยนะคะ ระบบจะตรวจสอบให้อัตโนมัติค่ะ`
+                    text: `💳 สำหรับออเดอร์ #${order.id}\nรบกวนชำระเงินโดยสแกน QR Code ด้านล่างนี้ค่ะ\n(ยอดโอน ${order.totalPrice} บาท)\n\n⚠️ คำเตือน: หากชำระเงินแล้วจะไม่สามารถยกเลิกออเดอร์ หรือขอคืนเงินได้ในทุกกรณี รบกวนตรวจสอบความถูกต้องก่อนชำระเงินนะคะ\n\nเมื่อโอนเงินเรียบร้อยแล้ว สามารถส่งรูปสลิปเข้ามาในแชทนี้ได้เลยนะคะ ระบบจะตรวจสอบให้อัตโนมัติค่ะ`
                   },
                   {
                     type: 'image',
@@ -166,6 +169,44 @@ export async function POST(request) {
             continue;
           }
 
+          // ตรวจสอบว่าเป็นคำสั่งยกเลิกออเดอร์หรือไม่
+          if (text === 'ยกเลิกออเดอร์' || text === 'ยกเลิกสินค้า') {
+            const order = await prisma.order.findFirst({
+              where: { lineUid: userId },
+              orderBy: { updatedAt: 'desc' }
+            });
+
+            if (order) {
+              if (order.status === 'pending') {
+                // ยกเลิกได้เฉพาะตอนที่ยังไม่ชำระเงิน
+                await prisma.order.update({
+                  where: { id: order.id },
+                  data: { status: 'cancelled' }
+                });
+                await replyMessage(replyToken, [{
+                  type: 'text',
+                  text: `✅ ยกเลิกออเดอร์ #${order.id} เรียบร้อยแล้วค่ะ\n\nหากต้องการสั่งซื้อสินค้าใหม่ สามารถทำรายการผ่านหน้าเว็บไซต์ได้เลยนะคะ`
+                }]);
+              } else {
+                let statusText = 'ได้รับการยืนยันแล้ว';
+                if (order.status === 'producing') statusText = 'อยู่ระหว่างดำเนินการผลิต';
+                if (order.status === 'shipped') statusText = 'ถูกจัดส่งเรียบร้อยแล้ว';
+                if (order.status === 'cancelled') statusText = 'ถูกยกเลิกไปแล้ว';
+
+                await replyMessage(replyToken, [{
+                  type: 'text',
+                  text: `❌ ไม่สามารถยกเลิกออเดอร์ #${order.id} ได้ค่ะ\nเนื่องจากสถานะปัจจุบันคือ "${statusText}"\n\nหากมีข้อสงสัยเพิ่มเติม รบกวนติดต่อแอดมินโดยตรงนะคะ`
+                }]);
+              }
+            } else {
+              await replyMessage(replyToken, [{
+                type: 'text',
+                text: '❌ ไม่พบออเดอร์ของคุณค่ะ'
+              }]);
+            }
+            continue;
+          }
+
           // ข้อความทั่วไป (ถ้าแชทกันอยู่ จะไม่ส่งข้อความซ้ำ จนกว่าจะเงียบไป 3 ชม.)
           if (canSendGeneralReply) {
             await replyMessage(replyToken, [{
@@ -178,10 +219,10 @@ export async function POST(request) {
 
         // --- รูปภาพ (Image) - ระบบตรวจสลิป ---
         if (msg.type === 'image') {
-          // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้
+          // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้ โดยเรียงตาม updatedAt
           const order = await prisma.order.findFirst({
             where: { lineUid: userId },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { updatedAt: 'desc' }
           });
 
           if (!order) {
