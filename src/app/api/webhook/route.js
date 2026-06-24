@@ -87,16 +87,31 @@ export async function POST(request) {
                 data: { lineUid: userId }
               });
 
-              await replyMessage(replyToken, [
+              const replyMessages = [
                 {
                   type: 'text',
                   text: `✅ เชื่อมต่อสำเร็จ!\n\n📦 ออเดอร์ #${order.id}\n👤 ${order.customerName}\n👕 ${order.productName} (${order.size} / ${order.color})\n💰 ยอดรวม ${order.totalPrice} บาท\n\nระบบจะแจ้งเตือนสถานะสินค้าอัตโนมัติผ่านแชทนี้ค่ะ`
-                },
-                {
+                }
+              ];
+
+              if (order.status === 'pending') {
+                replyMessages.push({
                   type: 'text',
                   text: `คุณพร้อมชำระเงินเลยไหมคะ?\nหากพร้อมชำระเงิน รบกวนพิมพ์คำว่า "ชำระเงิน" เข้ามาได้เลยค่ะ เพื่อรับ QR Code โอนเงินค่ะ`
-                }
-              ]);
+                });
+              } else {
+                let statusText = '✅ ยืนยันการชำระเงินแล้ว';
+                if (order.status === 'producing') statusText = '⚙️ กำลังดำเนินการผลิต';
+                if (order.status === 'shipped') statusText = '📦 จัดส่งเรียบร้อยแล้ว';
+                if (order.status === 'cancelled') statusText = '❌ ถูกยกเลิกแล้ว';
+                
+                replyMessages.push({
+                  type: 'text',
+                  text: `📌 สถานะออเดอร์ปัจจุบัน: ${statusText}\n(ไม่ต้องชำระเงินซ้ำค่ะ)`
+                });
+              }
+
+              await replyMessage(replyToken, replyMessages);
             } else {
               await replyMessage(replyToken, [{
                 type: 'text',
