@@ -9,13 +9,25 @@ export async function POST(request) {
     const bodyText = await request.text();
     const signature = request.headers.get('x-line-signature');
 
-    // ตรวจสอบ Signature (ป้องกันการปลอมแปลง)
-    if (signature && !verifySignature(bodyText, signature)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
+    let body;
+    try {
+      body = JSON.parse(bodyText);
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
 
-    const body = JSON.parse(bodyText);
     const events = body.events || [];
+
+    // สำหรับตอนกดปุ่ม Verify ในหน้าเว็บ LINE Developers (จะส่ง events ว่างๆ มา)
+    if (events.length === 0) {
+      return NextResponse.json({ status: 'ok', message: 'Webhook verified' });
+    }
+
+    // ตรวจสอบ Signature (ป้องกันการปลอมแปลง) เฉพาะตอนที่มี event จริงๆ
+    if (signature && !verifySignature(bodyText, signature)) {
+      console.error('Invalid LINE signature');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
+    }
 
     for (const event of events) {
       const userId = event.source?.userId;

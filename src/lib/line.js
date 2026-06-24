@@ -57,11 +57,17 @@ export function verifySignature(body, signature) {
   const crypto = require('crypto');
   const channelSecret = process.env.LINE_CHANNEL_SECRET;
   if (!channelSecret) return false;
-  const hash = crypto
-    .createHmac('SHA256', channelSecret)
-    .update(body)
-    .digest('base64');
-  return hash === signature;
+  
+  try {
+    const hash = crypto
+      .createHmac('SHA256', channelSecret)
+      .update(body, 'utf8')
+      .digest('base64');
+    return hash === signature;
+  } catch (e) {
+    console.error('Signature check error:', e);
+    return false;
+  }
 }
 
 // สร้างข้อความแจ้งเตือนสถานะตามประเภท
