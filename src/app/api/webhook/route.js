@@ -98,8 +98,8 @@ export async function POST(request) {
                 },
                 {
                   type: 'image',
-                  originalContentUrl: 'https://petme-pre-oder.vercel.app/images/QRCODE.jpg',
-                  previewImageUrl: 'https://petme-pre-oder.vercel.app/images/QRCODE.jpg'
+                  originalContentUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${order.totalPrice}`,
+                  previewImageUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${order.totalPrice}`
                 }
               ]);
             } else {
