@@ -232,14 +232,13 @@ export async function POST(request) {
 
           // ตรวจสอบคำสั่ง ยืนยันที่อยู่ / แก้ไขที่อยู่
           if (text === 'ยืนยันที่อยู่') {
-            const orderToConfirm = await prisma.order.findFirst({
-              where: { lineUid: userId, status: { notIn: ['shipped', 'cancelled'] }, addressConfirmed: false },
-              orderBy: { updatedAt: 'desc' }
+            const ordersToConfirm = await prisma.order.findMany({
+              where: { lineUid: userId, status: { not: 'cancelled' }, addressConfirmed: false }
             });
 
-            if (orderToConfirm) {
-              await prisma.order.update({
-                where: { id: orderToConfirm.id },
+            if (ordersToConfirm.length > 0) {
+              await prisma.order.updateMany({
+                where: { id: { in: ordersToConfirm.map(o => o.id) } },
                 data: { addressConfirmed: true }
               });
               await replyMessage(replyToken, [{ type: 'text', text: '✅ ขอบคุณค่ะ ทางร้านบันทึกการยืนยันที่อยู่เรียบร้อยแล้ว และจะรีบดำเนินการจัดส่งให้เร็วที่สุดค่ะ 🚚' }]);
