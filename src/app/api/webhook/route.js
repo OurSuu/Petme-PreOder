@@ -69,7 +69,9 @@ export async function POST(request) {
 
         // --- ข้อความตัวอักษร (Text) ---
         if (msg.type === 'text') {
-          const text = msg.text.trim().toUpperCase();
+          let text = msg.text.trim().toUpperCase();
+          // แก้ปัญหาพิมพ์ 'เ' สองตัว แทน 'แ'
+          text = text.replace(/เเ/g, 'แ');
 
           // ตรวจสอบว่าเป็น Secure Token หรือไม่ (รูปแบบ: PETME-XXXXXX)
           if (text.startsWith('PETME-') && text.length >= 10) {

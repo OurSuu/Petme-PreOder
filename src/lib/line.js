@@ -43,15 +43,18 @@ export async function sendNotify(message) {
   }
 }
 
-// ตอบกลับข้อความ (ใช้ replyToken จาก webhook event)
 export async function replyMessage(replyToken, messages) {
   if (!TOKEN) return;
   try {
-    await fetch(`${LINE_API}/message/reply`, {
+    const res = await fetch(`${LINE_API}/message/reply`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ replyToken, messages }),
     });
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('LINE replyMessage error response:', errorText);
+    }
   } catch (e) {
     console.error('LINE replyMessage error:', e);
   }
