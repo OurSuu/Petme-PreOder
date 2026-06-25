@@ -20,6 +20,12 @@ export default function AdminDashboard() {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
   const [shippingDialog, setShippingDialog] = useState({ isOpen: false, order: null, trackingNumber: '' });
   const [addressDialog, setAddressDialog] = useState({ isOpen: false, order: null, formData: {} });
+  const [toast, setToast] = useState({ isOpen: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ isOpen: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, isOpen: false })), 3000);
+  };
 
   // การจัดการค้นหา, กรองสถานะ และแบ่งหน้า
   const [searchTerm, setSearchTerm] = useState('');
@@ -199,16 +205,21 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       const res = await fetch(`/api/orders/${addressDialog.order.id}/address`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(addressDialog.formData)
       });
       if (res.ok) {
         setAddressDialog({ isOpen: false, order: null, formData: {} });
         fetchOrders();
+        showToast('บันทึกที่อยู่และส่งแจ้งเตือนเรียบร้อยแล้ว', 'success');
+      } else {
+        showToast('เกิดข้อผิดพลาดในการบันทึกที่อยู่', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('เกิดข้อผิดพลาดของระบบ', 'error');
+    } finally {
       setLoading(false);
     }
   };
@@ -217,12 +228,13 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(`/api/orders/${id}/request-confirmation`, { method: 'POST' });
       if (res.ok) {
-        alert('ส่งคำขอยืนยันที่อยู่ให้ลูกค้าเรียบร้อยแล้ว');
+        showToast('ส่งคำขอยืนยันที่อยู่ให้ลูกค้าเรียบร้อยแล้ว', 'success');
       } else {
-        alert('เกิดข้อผิดพลาดในการส่งคำขอ');
+        showToast('เกิดข้อผิดพลาดในการส่งคำขอ', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('เกิดข้อผิดพลาดของระบบ', 'error');
     }
   };
 
@@ -733,6 +745,30 @@ export default function AdminDashboard() {
               <button className="btn btn-primary" onClick={saveAddress}>บันทึกและส่งแจ้งเตือน</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.isOpen && (
+        <div style={{
+          position: 'fixed',
+          bottom: '30px',
+          right: '30px',
+          background: toast.type === 'success' ? '#22c55e' : '#ef4444',
+          color: '#fff',
+          padding: '16px 24px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          animation: 'slideIn 0.3s ease-out forwards',
+          zIndex: 9999,
+          fontWeight: 'bold',
+          fontSize: '15px'
+        }}>
+          <span>{toast.type === 'success' ? '✅' : '❌'}</span>
+          <span>{toast.message}</span>
         </div>
       )}
     </div>
