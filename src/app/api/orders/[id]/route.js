@@ -15,14 +15,13 @@ export async function PATCH(request, { params }) {
 
     // ถ้ามีการเปลี่ยนสถานะ และออเดอร์นี้มี lineUid → ส่งแจ้งเตือนผ่าน LINE
     if (body.status && order.lineUid && body.status !== oldOrder.status) {
-      const statusMsg = getStatusMessage(order.id, body.status);
+      const statusMsg = getStatusMessage(order, body.status);
       if (statusMsg) {
         await pushMessage(order.lineUid, [{ type: 'text', text: statusMsg.text }]);
       }
-    }
-
-    // ถ้ามีการเพิ่มเลขพัสดุใหม่
-    if (body.trackingNumbers && order.lineUid) {
+    } 
+    // ถ้าไม่มีการเปลี่ยนสถานะ (หรือไม่ได้เปลี่ยนเป็น shipped) แต่มีการเพิ่มเลขพัสดุใหม่ แยกมาต่างหาก
+    else if (body.trackingNumbers && order.lineUid) {
       const oldTracking = oldOrder?.trackingNumbers || [];
       const newTracking = body.trackingNumbers || [];
       const addedTracking = newTracking.filter(t => !oldTracking.includes(t));

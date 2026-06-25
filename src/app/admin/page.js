@@ -18,6 +18,7 @@ export default function AdminDashboard() {
 
   // Custom Confirm Dialog
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
+  const [shippingDialog, setShippingDialog] = useState({ isOpen: false, order: null, trackingNumber: '' });
 
   // การจัดการค้นหา, กรองสถานะ และแบ่งหน้า
   const [searchTerm, setSearchTerm] = useState('');
@@ -169,6 +170,27 @@ export default function AdminDashboard() {
       if (res.ok) fetchOrders();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const confirmShipping = async () => {
+    const { order, trackingNumber } = shippingDialog;
+    setShippingDialog({ ...shippingDialog, isOpen: false });
+    
+    const currentTracking = order.trackingNumbers || [];
+    const newTrackingList = trackingNumber.trim() ? [...currentTracking, trackingNumber.trim()] : currentTracking;
+
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'shipped', trackingNumbers: newTrackingList })
+      });
+      if (res.ok) fetchOrders();
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
     }
   };
 
@@ -514,7 +536,13 @@ export default function AdminDashboard() {
                           <select
                             className="status-select"
                             value={o.status}
-                            onChange={(e) => updateStatus(o.id, e.target.value)}
+                            onChange={(e) => {
+                              if (e.target.value === 'shipped') {
+                                setShippingDialog({ isOpen: true, order: o, trackingNumber: '' });
+                              } else {
+                                updateStatus(o.id, e.target.value);
+                              }
+                            }}
                           >
                             <option value="pending">รอดำเนินการ</option>
                             <option value="confirmed">ยืนยันแล้ว</option>
@@ -565,6 +593,29 @@ export default function AdminDashboard() {
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button className="btn btn-ghost" onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}>ยกเลิก</button>
               <button className="btn btn-primary" onClick={confirmDialog.onConfirm}>ตกลง</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {shippingDialog.isOpen && (
+        <div className="modal-overlay" onClick={() => setShippingDialog({ ...shippingDialog, isOpen: false })}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center', padding: '30px' }}>
+            <h2 style={{ color: 'var(--gold)', marginBottom: '16px', fontSize: '24px' }}>📦 จัดส่งสินค้า (ออเดอร์ #{shippingDialog.order?.id})</h2>
+            <p style={{ marginBottom: '16px', fontSize: '14px', color: '#ccc', lineHeight: '1.6' }}>
+              กรุณากรอกเลขพัสดุสำหรับออเดอร์นี้<br/>(ระบบจะส่งข้อความแจ้งลูกค้าอัตโนมัติ)
+            </p>
+            <input 
+              type="text" 
+              value={shippingDialog.trackingNumber}
+              onChange={(e) => setShippingDialog({ ...shippingDialog, trackingNumber: e.target.value })}
+              placeholder="กรอกเลขพัสดุ (ถ้ามี)"
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff', marginBottom: '24px' }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="btn btn-ghost" onClick={() => setShippingDialog({ ...shippingDialog, isOpen: false })}>ยกเลิก</button>
+              <button className="btn btn-primary" onClick={confirmShipping}>ยืนยันการจัดส่ง</button>
             </div>
           </div>
         </div>

@@ -70,20 +70,21 @@ export function verifySignature(body, signature) {
   }
 }
 
-// สร้างข้อความแจ้งเตือนสถานะตามประเภท
-export function getStatusMessage(orderId, status) {
+export function getStatusMessage(order, status) {
+  const address = `บ้านเลขที่ ${order.houseNo || ''} ${order.moo ? `ม.${order.moo}` : ''} ${order.soi ? `ซ.${order.soi}` : ''} ต.${order.subDistrict || ''} อ.${order.district || ''} จ.${order.province || ''} ${order.postalCode || ''}`;
+  
   const statusMessages = {
     'confirmed': {
-      text: `✅ ออเดอร์ #${orderId} ยืนยันแล้ว!\n\nทางร้านได้รับการยืนยันคำสั่งซื้อของคุณเรียบร้อยแล้วค่ะ กำลังดำเนินการผลิตให้เร็วที่สุดนะคะ 🙏`,
+      text: `✅ ออเดอร์ #${order.id} ยืนยันแล้ว!\n\nทางร้านได้รับการยืนยันคำสั่งซื้อของคุณเรียบร้อยแล้วค่ะ กำลังดำเนินการผลิตให้เร็วที่สุดนะคะ 🙏`,
     },
     'producing': {
-      text: `🔨 ออเดอร์ #${orderId} กำลังผลิต!\n\nสินค้าของคุณกำลังอยู่ในขั้นตอนการผลิตแล้วค่ะ รอสักครู่นะคะ ❤️`,
+      text: `🔨 ออเดอร์ #${order.id} กำลังผลิต!\n\nสินค้าของคุณกำลังอยู่ในขั้นตอนการผลิตแล้วค่ะ รอสักครู่นะคะ ❤️`,
     },
     'shipped': {
-      text: `📦 ออเดอร์ #${orderId} จัดส่งแล้ว!\n\nสินค้าของคุณถูกจัดส่งเรียบร้อยแล้วค่ะ! รอรับสินค้าได้เลยนะคะ 🎉`,
+      text: `📦 ออเดอร์ #${order.id} จัดส่งแล้ว!\n\nเรียนคุณ ${order.customerName},\nสินค้าของคุณถูกจัดส่งเรียบร้อยแล้วค่ะ!\n\n📍 ที่อยู่จัดส่ง:\n${address.replace(/  +/g, ' ').trim()}\n\n🚚 เลขพัสดุ: ${order.trackingNumbers && order.trackingNumbers.length > 0 ? order.trackingNumbers.join(', ') : 'รออัปเดต'}\n\nขอบคุณที่อุดหนุนค่ะ 🎉`,
     },
     'cancelled': {
-      text: `❌ ออเดอร์ #${orderId} ถูกยกเลิก\n\nคำสั่งซื้อของคุณถูกยกเลิกแล้วค่ะ หากมีข้อสงสัยกรุณาติดต่อทางร้านค่ะ`,
+      text: `❌ ออเดอร์ #${order.id} ถูกยกเลิก\n\nคำสั่งซื้อของคุณถูกยกเลิกแล้วค่ะ หากมีข้อสงสัยกรุณาติดต่อทางร้านค่ะ`,
     },
   };
   return statusMessages[status] || null;
