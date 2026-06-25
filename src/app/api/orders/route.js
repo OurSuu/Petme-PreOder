@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { sendNotify } from '@/lib/line';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,9 @@ export async function POST(request) {
       }
     }
     
+    // แจ้งเตือนแอดมินผ่าน LINE Notify
+    await sendNotify(`🛒 มีออเดอร์ใหม่!\nออเดอร์ #${order.id}\nจากคุณ: ${order.customerName}\nยอดชำระ: ${order.totalPrice} บาท`);
+
     return NextResponse.json(order, { status: 201 });
   } catch (error) {
     console.error(error);

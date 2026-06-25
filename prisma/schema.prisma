@@ -45,6 +45,7 @@ model Order {
   secureToken  String?  @unique
   lineUid      String?
   trackingNumbers String[] @default([])
+  addressConfirmed Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

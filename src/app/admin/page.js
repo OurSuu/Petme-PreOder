@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   // Custom Confirm Dialog
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
   const [shippingDialog, setShippingDialog] = useState({ isOpen: false, order: null, trackingNumber: '' });
+  const [addressDialog, setAddressDialog] = useState({ isOpen: false, order: null, formData: {} });
 
   // การจัดการค้นหา, กรองสถานะ และแบ่งหน้า
   const [searchTerm, setSearchTerm] = useState('');
@@ -191,6 +192,37 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err);
       setLoading(false);
+    }
+  };
+
+  const saveAddress = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/orders/${addressDialog.order.id}/address`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addressDialog.formData)
+      });
+      if (res.ok) {
+        setAddressDialog({ isOpen: false, order: null, formData: {} });
+        fetchOrders();
+      }
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  const requestConfirmation = async (id) => {
+    try {
+      const res = await fetch(`/api/orders/${id}/request-confirmation`, { method: 'POST' });
+      if (res.ok) {
+        alert('ส่งคำขอยืนยันที่อยู่ให้ลูกค้าเรียบร้อยแล้ว');
+      } else {
+        alert('เกิดข้อผิดพลาดในการส่งคำขอ');
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -482,12 +514,44 @@ export default function AdminDashboard() {
                           {o.phone}
                           {o.lineId && <div><small style={{ color: 'var(--gold)' }}>LINE: {o.lineId}</small></div>}
                         </td>
-                        <td style={{ maxWidth: '200px', lineHeight: '1.4' }}>
-                          บ้านเลขที่ {o.houseNo}
-                          {o.moo && ` ม.${o.moo}`}
-                          {o.soi && ` ซ.${o.soi}`} <br />
-                          ต.{o.subDistrict} อ.{o.district} <br />
-                          จ.{o.province} {o.postalCode}
+                        <td style={{ maxWidth: '250px', lineHeight: '1.4' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              บ้านเลขที่ {o.houseNo}
+                              {o.moo && ` ม.${o.moo}`}
+                              {o.soi && ` ซ.${o.soi}`} <br />
+                              ต.{o.subDistrict} อ.{o.district} <br />
+                              จ.{o.province} {o.postalCode}
+                            </div>
+                            <button 
+                              onClick={() => setAddressDialog({ isOpen: true, order: o, formData: { customerName: o.customerName, phone: o.phone, houseNo: o.houseNo, moo: o.moo || '', soi: o.soi || '', subDistrict: o.subDistrict, district: o.district, province: o.province, postalCode: o.postalCode } })}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+                              title="แก้ไขที่อยู่"
+                            >
+                              ✏️
+                            </button>
+                          </div>
+                          <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                            {o.addressConfirmed ? (
+                              <span style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                ✅ ยืนยันที่อยู่แล้ว
+                              </span>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ color: 'var(--red)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  ⏳ ยังไม่ยืนยันที่อยู่
+                                </span>
+                                {o.lineUid && (
+                                  <button 
+                                    onClick={() => requestConfirmation(o.id)}
+                                    style={{ background: 'var(--bg)', border: '1px solid var(--line)', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                                  >
+                                    ขอยืนยันที่อยู่
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td>{o.productName}</td>
                         <td>{o.size} / {o.color} / x{o.quantity}</td>
@@ -616,6 +680,57 @@ export default function AdminDashboard() {
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button className="btn btn-ghost" onClick={() => setShippingDialog({ ...shippingDialog, isOpen: false })}>ยกเลิก</button>
               <button className="btn btn-primary" onClick={confirmShipping}>ยืนยันการจัดส่ง</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addressDialog.isOpen && (
+        <div className="modal-overlay" onClick={() => setAddressDialog({ ...addressDialog, isOpen: false })}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px', padding: '30px' }}>
+            <h2 style={{ color: 'var(--gold)', marginBottom: '20px', fontSize: '20px', textAlign: 'center' }}>✏️ แก้ไขที่อยู่จัดส่ง (ออเดอร์ #{addressDialog.order?.id})</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>ชื่อผู้รับ</label>
+                <input type="text" value={addressDialog.formData.customerName || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, customerName: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>เบอร์โทร</label>
+                <input type="text" value={addressDialog.formData.phone || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, phone: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>บ้านเลขที่</label>
+                <input type="text" value={addressDialog.formData.houseNo || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, houseNo: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>หมู่ที่</label>
+                <input type="text" value={addressDialog.formData.moo || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, moo: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>ตรอก/ซอย</label>
+                <input type="text" value={addressDialog.formData.soi || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, soi: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>ตำบล/แขวง</label>
+                <input type="text" value={addressDialog.formData.subDistrict || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, subDistrict: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>อำเภอ/เขต</label>
+                <input type="text" value={addressDialog.formData.district || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, district: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>จังหวัด</label>
+                <input type="text" value={addressDialog.formData.province || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, province: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>รหัสไปรษณีย์</label>
+                <input type="text" value={addressDialog.formData.postalCode || ''} onChange={e => setAddressDialog({ ...addressDialog, formData: { ...addressDialog.formData, postalCode: e.target.value } })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }} />
+              </div>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--gold)', marginBottom: '20px', textAlign: 'center' }}>*เมื่อกดบันทึก ระบบจะส่งข้อความแจ้งลูกค้าเพื่อยืนยันที่อยู่ใหม่อีกครั้งอัตโนมัติ</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="btn btn-ghost" onClick={() => setAddressDialog({ ...addressDialog, isOpen: false })}>ยกเลิก</button>
+              <button className="btn btn-primary" onClick={saveAddress}>บันทึกและส่งแจ้งเตือน</button>
             </div>
           </div>
         </div>

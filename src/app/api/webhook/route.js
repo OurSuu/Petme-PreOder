@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { replyMessage, getImageContent, pushMessage, verifySignature } from '@/lib/line';
+import { replyMessage, getImageContent, pushMessage, verifySignature, sendNotify } from '@/lib/line';
 
 // LINE Webhook Endpoint
 // POST: รับ events จาก LINE (ข้อความ, รูปภาพ, follow)
@@ -125,47 +125,130 @@ export async function POST(request) {
           }
 
           // ตรวจสอบว่าเป็นคำสั่งขอ QR Code ชำระเงินหรือไม่
-          if (text.includes('ชำระเงิน') || text.includes('พร้อมชำระ')) {
-            // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้ โดยเรียงตาม updatedAt
-            const order = await prisma.order.findFirst({
-              where: { lineUid: userId },
+          if (text.includes('ชำระเงิน') || text.includes('พร้อมชำระ') || text.includes('แจ้งชำระ') || text.includes('ส่งสลิป')) {
+            const pendingOrders = await prisma.order.findMany({
+              where: { lineUid: userId, status: 'pending' },
+              orderBy: { createdAt: 'asc' }
+            });
+
+            if (pendingOrders.length === 0) {
+              await replyMessage(replyToken, [{
+                type: 'text',
+                text: 'คุณไม่มีออเดอร์ที่รอชำระเงินค่ะ\n\n(หากเพิ่งสั่งซื้อ กรุณาพิมพ์ "รหัสลับ" เพื่อเชื่อมต่อออเดอร์ก่อนนะคะ)'
+              }]);
+            } else if (pendingOrders.length === 1) {
+              const o = pendingOrders[0];
+              await replyMessage(replyToken, [
+                {
+                  type: 'text',
+                  text: `💳 สำหรับออเดอร์ #${o.id}\nรบกวนชำระเงินโดยสแกน QR Code ด้านล่างนี้ค่ะ\n(ยอดโอน ${o.totalPrice} บาท)\n\nเมื่อโอนเงินเรียบร้อยแล้ว สามารถส่งรูปสลิปเข้ามาในแชทนี้ได้เลยนะคะ ระบบจะตรวจสอบให้อัตโนมัติค่ะ`
+                },
+                {
+                  type: 'image',
+                  originalContentUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${o.totalPrice}`,
+                  previewImageUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${o.totalPrice}`
+                }
+              ]);
+            } else {
+              const totalSum = pendingOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+              const orderDetails = pendingOrders.map(o => `- ออเดอร์ #${o.id} (${o.productName}): ${o.totalPrice} บาท`).join('\n');
+              
+              await replyMessage(replyToken, [
+                {
+                  type: 'text',
+                  text: `คุณมีออเดอร์รอชำระเงิน ${pendingOrders.length} รายการ:\n\n${orderDetails}\n\n💡 ยอดรวมทั้งหมด: ${totalSum} บาท\n\nคุณสามารถโอนรวบยอดทั้งหมดในครั้งเดียว หรือโอนแยกทีละออเดอร์ก็ได้ค่ะ (ใช้สแกน QR Code หรือโอนเข้าบัญชีเดิม)\n\nเมื่อโอนเรียบร้อยแล้ว ส่งสลิปเข้ามาได้เลยค่ะ ระบบจะจับคู่ให้อัตโนมัติ!`
+                },
+                {
+                  type: 'image',
+                  originalContentUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${totalSum}`,
+                  previewImageUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${totalSum}`
+                }
+              ]);
+            }
+            continue;
+          }
+
+          // ตรวจสอบคำสั่ง เช็คสถานะออเดอร์ (สำหรับ Unified Rich Menu)
+          if (text === 'เช็คสถานะออเดอร์' || text === 'เช็คสถานะ') {
+            const activeOrders = await prisma.order.findMany({
+              where: { lineUid: userId, status: { not: 'cancelled' } },
+              orderBy: { createdAt: 'desc' },
+              take: 5
+            });
+
+            if (activeOrders.length === 0) {
+              await replyMessage(replyToken, [{ type: 'text', text: 'ไม่พบออเดอร์ที่กำลังดำเนินการของคุณค่ะ' }]);
+            } else {
+              const bubbles = activeOrders.map(o => {
+                let statusColor = '#aaaaaa';
+                let statusText = 'รอดำเนินการ';
+                if (o.status === 'confirmed') { statusColor = '#3b82f6'; statusText = 'ยืนยันแล้ว (รอผลิต)'; }
+                if (o.status === 'producing') { statusColor = '#eab308'; statusText = 'กำลังผลิต'; }
+                if (o.status === 'shipped') { statusColor = '#22c55e'; statusText = 'จัดส่งแล้ว'; }
+
+                const trackingText = (o.status === 'shipped' && o.trackingNumbers?.length > 0) 
+                  ? `เลขพัสดุ: ${o.trackingNumbers.join(', ')}` 
+                  : (o.status === 'shipped' ? 'กำลังรอเลขพัสดุ' : '-');
+
+                return {
+                  type: 'bubble',
+                  size: 'kilo',
+                  header: {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      { type: 'text', text: `ออเดอร์ #${o.id}`, weight: 'bold', color: '#ffffff', size: 'sm' }
+                    ],
+                    backgroundColor: statusColor
+                  },
+                  body: {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                      { type: 'text', text: `${o.productName}`, weight: 'bold', size: 'sm', wrap: true },
+                      { type: 'text', text: `ไซส์: ${o.size} / สี: ${o.color}`, size: 'xs', color: '#888888', margin: 'sm' },
+                      { type: 'text', text: `จำนวน: ${o.quantity} | ยอดรวม: ${o.totalPrice} ฿`, size: 'xs', color: '#888888' },
+                      { type: 'separator', margin: 'md' },
+                      { type: 'text', text: `สถานะ: ${statusText}`, size: 'sm', color: statusColor, weight: 'bold', margin: 'md' },
+                      { type: 'text', text: trackingText, size: 'xs', color: '#555555', wrap: true, margin: 'sm' }
+                    ]
+                  }
+                };
+              });
+
+              await replyMessage(replyToken, [{
+                type: 'flex',
+                altText: 'สถานะออเดอร์ของคุณ',
+                contents: {
+                  type: 'carousel',
+                  contents: bubbles
+                }
+              }]);
+            }
+            continue;
+          }
+
+          // ตรวจสอบคำสั่ง ยืนยันที่อยู่ / แก้ไขที่อยู่
+          if (text === 'ยืนยันที่อยู่') {
+            const orderToConfirm = await prisma.order.findFirst({
+              where: { lineUid: userId, status: { notIn: ['shipped', 'cancelled'] }, addressConfirmed: false },
               orderBy: { updatedAt: 'desc' }
             });
 
-            if (order) {
-              if (order.status === 'pending') {
-                await replyMessage(replyToken, [
-                  {
-                    type: 'text',
-                    text: `💳 สำหรับออเดอร์ #${order.id}\nรบกวนชำระเงินโดยสแกน QR Code ด้านล่างนี้ค่ะ\n(ยอดโอน ${order.totalPrice} บาท)\n\n⚠️ คำเตือน: หากชำระเงินแล้วจะไม่สามารถยกเลิกออเดอร์ หรือขอคืนเงินได้ในทุกกรณี รบกวนตรวจสอบความถูกต้องก่อนชำระเงินนะคะ\n\nเมื่อโอนเงินเรียบร้อยแล้ว สามารถส่งรูปสลิปเข้ามาในแชทนี้ได้เลยนะคะ ระบบจะตรวจสอบให้อัตโนมัติค่ะ`
-                  },
-                  {
-                    type: 'image',
-                    originalContentUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${order.totalPrice}`,
-                    previewImageUrl: `https://petme-pre-oder.vercel.app/api/qr?amount=${order.totalPrice}`
-                  }
-                ]);
-              } else {
-                let statusText = '✅ ได้ทำการชำระเงินเรียบร้อยแล้ว';
-                if (order.status === 'producing') statusText = '⚙️ กำลังดำเนินการผลิต';
-                if (order.status === 'shipped') statusText = '📦 จัดส่งเรียบร้อยแล้ว';
-                if (order.status === 'cancelled') statusText = '❌ ถูกยกเลิกแล้ว';
-                
-                let extraText = '(ไม่ต้องชำระเงินซ้ำค่ะ)';
-                if (order.status === 'shipped') extraText = 'ขอบคุณที่อุดหนุนนะคะ 🙏';
-
-                await replyMessage(replyToken, [{
-                  type: 'text',
-                  text: `ออเดอร์ #${order.id} ของคุณ ${statusText}\n${extraText}`
-                }]);
-              }
+            if (orderToConfirm) {
+              await prisma.order.update({
+                where: { id: orderToConfirm.id },
+                data: { addressConfirmed: true }
+              });
+              await replyMessage(replyToken, [{ type: 'text', text: '✅ ขอบคุณค่ะ ทางร้านบันทึกการยืนยันที่อยู่เรียบร้อยแล้ว และจะรีบดำเนินการจัดส่งให้เร็วที่สุดค่ะ 🚚' }]);
             } else {
-              // ถ้าไม่มีออเดอร์ที่ผูกไว้เลย
-              await replyMessage(replyToken, [{
-                type: 'text',
-                text: '❌ ไม่พบออเดอร์ของคุณค่ะ\n\nหากเพิ่งสั่งซื้อ กรุณาพิมพ์ "รหัสลับ" (เช่น PETME-ABCDEF) เพื่อเชื่อมต่อออเดอร์ก่อนนะคะ'
-              }]);
+              await replyMessage(replyToken, [{ type: 'text', text: 'ไม่มีออเดอร์ที่รอการยืนยันที่อยู่ค่ะ' }]);
             }
+            continue;
+          }
+
+          if (text === 'แก้ไขที่อยู่') {
+            await replyMessage(replyToken, [{ type: 'text', text: 'หากต้องการแก้ไขที่อยู่ รบกวนพิมพ์ **ชื่อ, เบอร์โทร, และที่อยู่ใหม่ที่ถูกต้อง** ส่งมาในแชทนี้ได้เลยค่ะ แอดมินจะรีบทำการแก้ไขให้ค่ะ 📝' }]);
             continue;
           }
 
@@ -228,37 +311,19 @@ export async function POST(request) {
 
         // --- รูปภาพ (Image) - ระบบตรวจสลิป ---
         if (msg.type === 'image') {
-          // ค้นหาออเดอร์ล่าสุดที่ผูกกับ LINE UID นี้ โดยเรียงตาม updatedAt
-          const order = await prisma.order.findFirst({
-            where: { lineUid: userId },
-            orderBy: { updatedAt: 'desc' }
+          const pendingOrders = await prisma.order.findMany({
+            where: { lineUid: userId, status: 'pending' },
+            orderBy: { createdAt: 'asc' } // Oldest first
           });
 
-          if (!order) {
+          if (pendingOrders.length === 0) {
             await replyMessage(replyToken, [{
               type: 'text',
-              text: '❌ ไม่พบออเดอร์ของคุณค่ะ\n\nกรุณาเชื่อมต่อออเดอร์ก่อนโดยกดปุ่ม "เชื่อมต่อ LINE" จากหน้าเว็บไซต์ค่ะ'
+              text: 'คุณไม่มีออเดอร์ที่รอการชำระเงินค่ะ\n\n(หากเพิ่งสั่งซื้อ กรุณาพิมพ์ "รหัสลับ" เพื่อเชื่อมต่อออเดอร์ก่อนนะคะ หรือหากชำระไปแล้ว กรุณารอแอดมินตรวจสอบค่ะ)'
             }]);
             continue;
           }
 
-          if (order.status !== 'pending') {
-             let statusText = '✅ ได้ทำการชำระเงินเรียบร้อยแล้ว';
-             if (order.status === 'producing') statusText = '⚙️ กำลังดำเนินการผลิต';
-             if (order.status === 'shipped') statusText = '📦 จัดส่งเรียบร้อยแล้ว';
-             if (order.status === 'cancelled') statusText = '❌ ถูกยกเลิกแล้ว';
-             
-             let extraText = '(ไม่ต้องส่งสลิปซ้ำค่ะ)';
-             if (order.status === 'shipped') extraText = 'ขอบคุณที่อุดหนุนนะคะ 🙏';
-
-             await replyMessage(replyToken, [{
-               type: 'text',
-               text: `ออเดอร์ #${order.id} ของคุณ ${statusText}\n${extraText}`
-             }]);
-             continue;
-          }
-
-          // ตรวจสอบว่ามี EasySlip API Key หรือไม่
           const easySlipKey = process.env.EASYSLIP_API_KEY;
 
           if (easySlipKey) {
@@ -266,10 +331,7 @@ export async function POST(request) {
             try {
               const imageBuffer = await getImageContent(msg.id);
               if (!imageBuffer) {
-                await replyMessage(replyToken, [{
-                  type: 'text',
-                  text: '⚠️ ไม่สามารถโหลดรูปภาพได้ค่ะ กรุณาลองส่งใหม่อีกครั้งค่ะ'
-                }]);
+                await replyMessage(replyToken, [{ type: 'text', text: '⚠️ ไม่สามารถโหลดรูปภาพได้ค่ะ กรุณาลองส่งใหม่อีกครั้งค่ะ' }]);
                 continue;
               }
 
@@ -288,27 +350,51 @@ export async function POST(request) {
               if (slipData.status === 200 && slipData.data) {
                 const slip = slipData.data;
                 const slipAmount = parseFloat(slip.amount?.amount || 0);
+                const totalSum = pendingOrders.reduce((sum, o) => sum + o.totalPrice, 0);
 
-                if (slipAmount >= order.totalPrice) {
+                let matchedOrders = [];
+                let matchType = '';
+
+                // Step 1: Check Combined Payment (โอนรวบยอด)
+                if (Math.abs(slipAmount - totalSum) < 0.01) {
+                  matchedOrders = pendingOrders;
+                  matchType = 'combined';
+                } 
+                // Step 2: Check Individual Payment (โอนแยก)
+                else {
+                  const matchingOrder = pendingOrders.find(o => Math.abs(slipAmount - o.totalPrice) < 0.01);
+                  if (matchingOrder) {
+                    matchedOrders = [matchingOrder];
+                    matchType = 'single';
+                  }
+                }
+
+                if (matchedOrders.length > 0) {
                   // ✅ ยอดเงินตรง → อัปเดตสถานะอัตโนมัติ
-                  await prisma.order.update({
-                    where: { id: order.id },
+                  await prisma.order.updateMany({
+                    where: { id: { in: matchedOrders.map(o => o.id) } },
                     data: { status: 'confirmed' }
                   });
 
+                  const orderIdsStr = matchedOrders.map(o => `#${o.id}`).join(', ');
+                  
                   await replyMessage(replyToken, [{
                     type: 'text',
-                    text: `✅ ตรวจสอบสลิปสำเร็จ!\n\n💰 ยอดโอน: ${slipAmount.toFixed(2)} บาท\n📦 ออเดอร์ #${order.id}\n\nสถานะได้เปลี่ยนเป็น "ยืนยันแล้ว" ค่ะ\nทางร้านจะเริ่มดำเนินการผลิตสินค้าให้เร็วที่สุดค่ะ 🙏`
+                    text: `✅ ตรวจสอบสลิปสำเร็จ!\n\n💰 ยอดโอน: ${slipAmount.toFixed(2)} บาท\n📦 ชำระให้ออเดอร์: ${orderIdsStr}\n\nสถานะได้เปลี่ยนเป็น "ยืนยันแล้ว" ค่ะ\nทางร้านจะเริ่มดำเนินการผลิตสินค้าให้เร็วที่สุดค่ะ 🙏`
                   }]);
+
+                  await sendNotify(`💸 ลูกค้าส่งสลิปแล้ว!\nจากคุณ: ${matchedOrders[0].customerName}\nยอดโอน: ${slipAmount.toFixed(2)} บาท\nชำระให้ออเดอร์: ${orderIdsStr}\n(ระบบยืนยันสลิปอัตโนมัติแล้ว)`);
                 } else {
-                  // ❌ ยอดเงินไม่ตรง
+                  // ❌ ยอดเงินไม่ตรงกับอะไรเลย
                   await replyMessage(replyToken, [{
                     type: 'text',
-                    text: `⚠️ ยอดเงินในสลิปไม่ตรงค่ะ\n\n💰 ยอดที่ต้องชำระ: ${order.totalPrice} บาท\n💰 ยอดในสลิป: ${slipAmount.toFixed(2)} บาท\n\nกรุณาตรวจสอบยอดเงินแล้วส่งสลิปใหม่ค่ะ`
+                    text: `⚠️ ยอดเงินในสลิปไม่ตรงกับออเดอร์ค่ะ\n\n💰 ยอดโอนของคุณ: ${slipAmount.toFixed(2)} บาท\n\nระบบไม่พบออเดอร์ที่มียอดนี้ หรือยอดรวมไม่ตรงกับที่ค้างชำระค่ะ กรุณาติดต่อแอดมินเพื่อตรวจสอบค่ะ`
                   }]);
+
+                  await sendNotify(`⚠️ มีสลิปยอดไม่ตรงเข้า!\nยอดในสลิป: ${slipAmount.toFixed(2)} บาท\n(หาออเดอร์ที่ยอดตรงกันไม่เจอ รบกวนแอดมินตรวจสอบในแชทค่ะ)`);
                 }
               } else {
-                // ตรวจสลิปไม่สำเร็จ
+                // ตรวจสลิปไม่สำเร็จ (สลิปปลอม/สแกนไม่ติด)
                 await replyMessage(replyToken, [{
                   type: 'text',
                   text: '⚠️ ไม่สามารถตรวจสอบสลิปได้ค่ะ\n\nกรุณาส่งรูปสลิปที่ชัดเจน (เห็น QR Code) อีกครั้งค่ะ\nหรือรอทางร้านตรวจสอบด้วยตนเองค่ะ 🙏'
@@ -316,17 +402,17 @@ export async function POST(request) {
               }
             } catch (slipErr) {
               console.error('Slip verification error:', slipErr);
-              await replyMessage(replyToken, [{
-                type: 'text',
-                text: '⚠️ ระบบตรวจสลิปขัดข้อง กรุณาลองใหม่อีกครั้ง หรือรอทางร้านตรวจสอบด้วยตนเองค่ะ 🙏'
-              }]);
+              await replyMessage(replyToken, [{ type: 'text', text: '⚠️ ระบบตรวจสลิปขัดข้อง กรุณาลองใหม่อีกครั้ง หรือรอทางร้านตรวจสอบด้วยตนเองค่ะ 🙏' }]);
             }
           } else {
             // === ยังไม่มี API Key → แจ้งทางร้านเฉยๆ ===
+            const orderIdsStr = pendingOrders.map(o => `#${o.id}`).join(', ');
             await replyMessage(replyToken, [{
               type: 'text',
-              text: `📸 ได้รับสลิปเรียบร้อยแล้วค่ะ!\n\n📦 ออเดอร์ #${order.id}\n💰 ยอดรวม ${order.totalPrice} บาท\n\nทางร้านจะตรวจสอบสลิปและอัปเดตสถานะให้เร็วที่สุดค่ะ 🙏\nคุณจะได้รับแจ้งเตือนอัตโนมัติเมื่อสถานะเปลี่ยนแปลงค่ะ`
+              text: `📸 ได้รับสลิปเรียบร้อยแล้วค่ะ!\n\nทางร้านจะนำสลิปนี้ไปตรวจสอบกับออเดอร์ที่ค้างชำระของคุณค่ะ (${orderIdsStr})\nคุณจะได้รับแจ้งเตือนอัตโนมัติเมื่อสถานะเปลี่ยนแปลงค่ะ`
             }]);
+
+            await sendNotify(`📸 ลูกค้าส่งสลิปมาแล้ว!\n(เนื่องจากยังไม่เปิดระบบตรวจอัตโนมัติ รบกวนแอดมินเข้าไปตรวจสอบในแชทและอัปเดตสถานะด้วยครับ)`);
           }
           continue;
         }

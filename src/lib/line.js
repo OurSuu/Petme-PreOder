@@ -21,6 +21,28 @@ export async function pushMessage(userId, messages) {
   }
 }
 
+// ส่งข้อความแจ้งเตือนเข้ากลุ่มแอดมิน (LINE Notify)
+export async function sendNotify(message) {
+  const notifyToken = process.env.LINE_NOTIFY_TOKEN;
+  if (!notifyToken) return;
+  
+  try {
+    const params = new URLSearchParams();
+    params.append('message', message);
+    
+    await fetch('https://notify-api.line.me/api/notify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Bearer ${notifyToken}`,
+      },
+      body: params,
+    });
+  } catch (e) {
+    console.error('LINE Notify error:', e);
+  }
+}
+
 // ตอบกลับข้อความ (ใช้ replyToken จาก webhook event)
 export async function replyMessage(replyToken, messages) {
   if (!TOKEN) return;
