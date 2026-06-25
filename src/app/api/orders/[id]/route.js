@@ -43,13 +43,37 @@ export async function PATCH(request, { params }) {
     // Webhook Trigger: Send update to external backend for all changes
     if (process.env.EXTERNAL_BACKEND_URL) {
       try {
-        await fetch(process.env.EXTERNAL_BACKEND_URL, {
+        const url = process.env.EXTERNAL_BACKEND_URL;
+        let payload = order;
+        let headers = { 
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.PETME_SECRET_TOKEN || ''
+        };
+
+        // Native Discord Webhook Support
+        if (url.includes('discord.com/api/webhooks')) {
+          payload = {
+            content: null,
+            embeds: [
+              {
+                title: `🔄 Order #${order.id} Updated`,
+                color: 16766720, // Yellow
+                fields: [
+                  { name: "ชื่อผู้สั่ง (Customer)", value: order.customerName || "N/A", inline: true },
+                  { name: "สถานะใหม่", value: order.status, inline: true },
+                  { name: "ยอดชำระ", value: `${order.totalPrice} บาท`, inline: true },
+                ],
+                timestamp: new Date().toISOString()
+              }
+            ]
+          };
+          headers = { 'Content-Type': 'application/json' };
+        }
+
+        await fetch(url, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-api-key': process.env.PETME_SECRET_TOKEN || ''
-          },
-          body: JSON.stringify(order)
+          headers,
+          body: JSON.stringify(payload)
         });
       } catch (webhookErr) {
         console.error('Failed to send webhook to external backend:', webhookErr);

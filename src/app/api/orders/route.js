@@ -69,10 +69,38 @@ export async function POST(request) {
     // ยิงข้อมูลไปที่ External Backend (Webhook) หากตั้งค่าไว้
     if (process.env.EXTERNAL_BACKEND_URL) {
       try {
-        await fetch(process.env.EXTERNAL_BACKEND_URL, {
+        const url = process.env.EXTERNAL_BACKEND_URL;
+        let payload = order;
+        let headers = { 
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.PETME_SECRET_TOKEN || ''
+        };
+
+        // Native Discord Webhook Support
+        if (url.includes('discord.com/api/webhooks')) {
+          payload = {
+            content: null,
+            embeds: [
+              {
+                title: `🛒 New Order #${order.id}`,
+                color: 5814783,
+                fields: [
+                  { name: "ชื่อผู้สั่ง (Customer)", value: order.customerName, inline: true },
+                  { name: "เบอร์โทร", value: order.phone, inline: true },
+                  { name: "สินค้า", value: `${order.productName} (${order.size} / ${order.color}) x${order.quantity}`, inline: false },
+                  { name: "ยอดชำระ", value: `${order.totalPrice} บาท`, inline: true },
+                ],
+                timestamp: new Date().toISOString()
+              }
+            ]
+          };
+          headers = { 'Content-Type': 'application/json' };
+        }
+
+        await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(order)
+          headers,
+          body: JSON.stringify(payload)
         });
       } catch (webhookErr) {
         console.error('Failed to send webhook to external backend:', webhookErr);
