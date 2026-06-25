@@ -2,13 +2,13 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { pushMessage } from '@/lib/line';
 
-export async function PUT(request, { params }) {
+export async function PATCH(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     const order = await prisma.order.findUnique({
-      where: { id: Number(id) }
+      where: { id: parseInt(id) }
     });
 
     if (!order) {

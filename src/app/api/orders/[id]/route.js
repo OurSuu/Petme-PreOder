@@ -19,6 +19,11 @@ export async function PATCH(request, { params }) {
       if (statusMsg) {
         await pushMessage(order.lineUid, [{ type: 'text', text: statusMsg.text }]);
       }
+      
+      if (body.status === 'confirmed' && !order.addressConfirmed) {
+        const { sendAddressConfirmationRequest } = require('@/lib/line');
+        await sendAddressConfirmationRequest(order);
+      }
     } 
     // ถ้าไม่มีการเปลี่ยนสถานะ (หรือไม่ได้เปลี่ยนเป็น shipped) แต่มีการเพิ่มเลขพัสดุใหม่ แยกมาต่างหาก
     else if (body.trackingNumbers && order.lineUid) {

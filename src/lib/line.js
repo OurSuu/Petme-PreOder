@@ -111,3 +111,24 @@ export function getStatusMessage(order, status) {
   };
   return statusMessages[status] || null;
 }
+
+export async function sendAddressConfirmationRequest(order) {
+  if (!order || !order.lineUid) return false;
+  
+  const address = `บ้านเลขที่ ${order.houseNo || ''} ${order.moo ? `ม.${order.moo}` : ''} ${order.soi ? `ซ.${order.soi}` : ''} ต.${order.subDistrict || ''} อ.${order.district || ''} จ.${order.province || ''} ${order.postalCode || ''}`;
+  
+  const msg = `🚨 [ตรวจสอบความถูกต้อง] สินค้าเตรียมดำเนินการ!
+รบกวนลูกค้าตรวจสอบและยืนยันที่อยู่จัดส่งด้านล่างนี้ให้ถูกต้องนะคะ:
+
+ชื่อผู้รับ: ${order.customerName}
+เบอร์โทร: ${order.phone}
+ที่อยู่:
+${address.replace(/  +/g, ' ').trim()}
+
+ลูกค้าแน่ใจกับที่อยู่นี้แล้วใช่ไหมคะ?
+- หากที่อยู่ถูกต้อง พิมพ์คำว่า: "ยืนยันที่อยู่"
+- หากต้องการแก้ไข พิมพ์คำว่า: "แก้ไขที่อยู่"`;
+
+  await pushMessage(order.lineUid, [{ type: 'text', text: msg }]);
+  return true;
+}

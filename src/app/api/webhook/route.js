@@ -393,6 +393,14 @@ export async function POST(request) {
                   }]);
 
                   await sendNotify(`💸 ลูกค้าส่งสลิปแล้ว!\nจากคุณ: ${matchedOrders[0].customerName}\nยอดโอน: ${slipAmount.toFixed(2)} บาท\nชำระให้ออเดอร์: ${orderIdsStr}\n(ระบบยืนยันสลิปอัตโนมัติแล้ว)`);
+
+                  // ส่งคำขอยืนยันที่อยู่อัตโนมัติ (ข้ามอันที่ยืนยันแล้ว)
+                  const { sendAddressConfirmationRequest } = require('@/lib/line');
+                  for (const o of matchedOrders) {
+                    if (!o.addressConfirmed) {
+                      await sendAddressConfirmationRequest(o);
+                    }
+                  }
                 } else {
                   // ❌ ยอดเงินไม่ตรงกับอะไรเลย
                   await replyMessage(replyToken, [{
