@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ username: '', password: '', name: '', phone: '' });
+  const [form, setForm] = useState({ username: '', password: '', name: '', phone: '', email: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -14,8 +14,14 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
 
-    if (!form.username.trim() || !form.password.trim() || !form.name.trim() || !form.phone.trim()) {
+    if (!form.username.trim() || !form.password.trim() || !form.name.trim() || !form.phone.trim() || !form.email.trim()) {
       setError('กรุณากรอกข้อมูลให้ครบถ้วน');
+      setLoading(false);
+      return;
+    }
+
+    if (!form.email.includes('@') || !form.email.includes('.')) {
+      setError('รูปแบบอีเมลไม่ถูกต้อง');
       setLoading(false);
       return;
     }
@@ -40,7 +46,6 @@ export default function RegisterPage() {
       const data = await res.json();
       
       if (res.ok) {
-        // Force refresh to update header state
         window.location.href = '/';
       } else {
         setError(data.error || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
@@ -64,6 +69,16 @@ export default function RegisterPage() {
               onChange={(e) => setForm({...form, username: e.target.value})}
               style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}
               placeholder="ตัวอักษรภาษาอังกฤษหรือตัวเลข"
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#ccc' }}>อีเมล *</label>
+            <input 
+              type="email" 
+              value={form.email}
+              onChange={(e) => setForm({...form, email: e.target.value})}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}
+              placeholder="example@email.com"
             />
           </div>
           <div className="form-group" style={{ marginBottom: '16px' }}>

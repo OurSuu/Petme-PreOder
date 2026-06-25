@@ -7,16 +7,22 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_for_dev_petme'
 
 export async function POST(request) {
   try {
-    const { username, password, name, phone } = await request.json();
+    const { username, password, name, phone, email } = await request.json();
 
-    if (!username || !password) {
-      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+    if (!username || !password || !email) {
+      return NextResponse.json({ error: 'Username, password and email are required' }, { status: 400 });
     }
 
-    // Check if customer exists
+    // Check if username exists
     const existingUser = await prisma.customer.findUnique({ where: { username } });
     if (existingUser) {
       return NextResponse.json({ error: 'Username already taken' }, { status: 400 });
+    }
+
+    // Check if email exists
+    const existingEmail = await prisma.customer.findUnique({ where: { email } });
+    if (existingEmail) {
+      return NextResponse.json({ error: 'Email already taken' }, { status: 400 });
     }
 
     // Hash password
@@ -30,6 +36,7 @@ export async function POST(request) {
         password: hashedPassword,
         name: name || null,
         phone: phone || null,
+        email: email,
       }
     });
 

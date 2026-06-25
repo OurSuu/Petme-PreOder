@@ -62,6 +62,9 @@ export default function LoginPage() {
               onChange={(e) => setForm({...form, password: e.target.value})}
               style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg)', color: '#fff' }}
             />
+            <div style={{ textAlign: 'right', marginTop: '8px' }}>
+              <Link href="/forgot-password" style={{ color: '#888', fontSize: '14px', textDecoration: 'none' }}>ลืมรหัสผ่าน?</Link>
+            </div>
           </div>
           {error && (
             <div className="alert-error" style={{ marginBottom: '20px' }}>
