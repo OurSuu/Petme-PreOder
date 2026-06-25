@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
 
   // การจัดการเลือกหลายรายการ (Bulk Actions)
   const [selectedOrders, setSelectedOrders] = useState([]);
@@ -143,6 +143,19 @@ export default function AdminDashboard() {
       setIsAuthenticated(true);
     } else {
       setLoginError(res.error);
+    }
+  };
+
+  const updateTrackingNumbers = async (id, newTrackingNumbers) => {
+    try {
+      const res = await fetch(`/api/orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackingNumbers: newTrackingNumbers })
+      });
+      if (res.ok) fetchOrders(false);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -422,6 +435,7 @@ export default function AdminDashboard() {
                     <th>สินค้า</th>
                     <th>ไซส์/สี/จำนวน</th>
                     <th>ยอดรวม</th>
+                    <th>เลขพัสดุ</th>
                     <th>สถานะ</th>
                     <th>จัดการ</th>
                   </tr>
@@ -456,6 +470,46 @@ export default function AdminDashboard() {
                         <td>{o.productName}</td>
                         <td>{o.size} / {o.color} / x{o.quantity}</td>
                         <td>{o.totalPrice} ฿</td>
+                        <td style={{ minWidth: '150px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {o.trackingNumbers?.map((tn, i) => (
+                              <span key={i} style={{ background: 'var(--bg)', border: '1px solid var(--line)', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', color: '#fff' }}>
+                                {tn}
+                                <button onClick={() => updateTrackingNumbers(o.id, o.trackingNumbers.filter(t => t !== tn))} style={{ color: 'var(--red)', background: 'transparent', border: 'none', cursor: 'pointer' }}>x</button>
+                              </span>
+                            ))}
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                              <input 
+                                type="text" 
+                                placeholder="เพิ่มเลขพัสดุ" 
+                                style={{ width: '100px', fontSize: '12px', padding: '4px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--bg-card)', color: '#fff' }} 
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && e.target.value.trim()) {
+                                    const current = o.trackingNumbers || [];
+                                    if (!current.includes(e.target.value.trim())) {
+                                      updateTrackingNumbers(o.id, [...current, e.target.value.trim()]);
+                                    }
+                                    e.target.value = '';
+                                  }
+                                }}
+                              />
+                              <button 
+                                className="btn btn-primary"
+                                style={{ fontSize: '12px', padding: '2px 8px' }}
+                                onClick={(e) => {
+                                  const input = e.target.previousSibling;
+                                  if (input.value.trim()) {
+                                    const current = o.trackingNumbers || [];
+                                    if (!current.includes(input.value.trim())) {
+                                      updateTrackingNumbers(o.id, [...current, input.value.trim()]);
+                                    }
+                                    input.value = '';
+                                  }
+                                }}
+                              >+</button>
+                            </div>
+                          </div>
+                        </td>
                         <td>
                           <select
                             className="status-select"

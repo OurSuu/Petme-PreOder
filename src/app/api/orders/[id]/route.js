@@ -6,16 +6,33 @@ export async function PATCH(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
+    const oldOrder = await prisma.order.findUnique({ where: { id: parseInt(id) } });
+
     const order = await prisma.order.update({
       where: { id: parseInt(id) },
       data: body,
     });
 
     // ถ้ามีการเปลี่ยนสถานะ และออเดอร์นี้มี lineUid → ส่งแจ้งเตือนผ่าน LINE
-    if (body.status && order.lineUid) {
+    if (body.status && order.lineUid && body.status !== oldOrder.status) {
       const statusMsg = getStatusMessage(order.id, body.status);
       if (statusMsg) {
         await pushMessage(order.lineUid, [{ type: 'text', text: statusMsg.text }]);
+      }
+    }
+
+    // ถ้ามีการเพิ่มเลขพัสดุใหม่
+    if (body.trackingNumbers && order.lineUid) {
+      const oldTracking = oldOrder?.trackingNumbers || [];
+      const newTracking = body.trackingNumbers || [];
+      const addedTracking = newTracking.filter(t => !oldTracking.includes(t));
+      
+      if (addedTracking.length > 0) {
+        const trackingText = addedTracking.join(', ');
+        await pushMessage(order.lineUid, [{ 
+          type: 'text', 
+          text: `🚚 มีการอัปเดตเลขพัสดุสำหรับออเดอร์ #${order.id} ค่ะ\n\nเลขพัสดุ: ${trackingText}\n\nคุณลูกค้าสามารถนำเลขพัสดุไปเช็คสถานะการจัดส่งได้เลยนะคะ ขอบคุณที่อุดหนุนค่ะ 🙏` 
+        }]);
       }
     }
 
