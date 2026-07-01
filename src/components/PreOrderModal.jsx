@@ -48,7 +48,7 @@ export default function PreOrderModal({ product, onClose, user }) {
     }
 
     // Handle Thai Address Autocomplete
-    if (['subDistrict', 'district', 'province', 'postalCode'].includes(name)) {
+    if (['subDistrict', 'district', 'province'].includes(name)) {
       if (thaiIndex && value.trim().length > 0) {
         import('thaizip').then(({ searchThaiAddress, formatThaiAddressSuggestion }) => {
           const results = searchThaiAddress(thaiIndex, value, { limit: 5 });
@@ -288,10 +288,9 @@ export default function PreOrderModal({ product, onClose, user }) {
               {renderSuggestions('province')}
             </div>
           </div>
-          <div className="form-group" style={{ position: 'relative' }}>
+          <div className="form-group">
             <label>รหัสไปรษณีย์ *</label>
-            <input name="postalCode" className={missingFields.includes('postalCode') ? 'invalid-field' : ''} value={form.postalCode} onChange={handleChange} onBlur={handleBlur} onFocus={(e) => handleChange(e)} placeholder="เช่น 10110" maxLength="5" autoComplete="off" />
-            {renderSuggestions('postalCode')}
+            <input name="postalCode" className={missingFields.includes('postalCode') ? 'invalid-field' : ''} value={form.postalCode} onChange={handleChange} placeholder="รหัสไปรษณีย์ (เติมอัตโนมัติ)" maxLength="5" style={{ background: 'rgba(255,255,255,0.05)', color: '#aaa' }} readOnly />
           </div>
 
           {/* ข้อมูลสินค้า */}
