@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function PreOrderModal({ product, onClose, user }) {
@@ -14,6 +14,17 @@ export default function PreOrderModal({ product, onClose, user }) {
   const [secureToken, setSecureToken] = useState(null);
   const [error, setError] = useState('');
   const [missingFields, setMissingFields] = useState([]);
+
+  // Thai Address Autocomplete State
+  const [thaiIndex, setThaiIndex] = useState(null);
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [activeAddressField, setActiveAddressField] = useState(null);
+
+  useEffect(() => {
+    import('thaizip/data').then(({ loadDefaultIndex }) => {
+      loadDefaultIndex().then(setThaiIndex);
+    });
+  }, []);
 
   const formatPhoneNumber = (value) => {
     const phoneNumber = value.replace(/\D/g, '');
@@ -35,6 +46,67 @@ export default function PreOrderModal({ product, onClose, user }) {
     if (missingFields.includes(name)) {
       setMissingFields(missingFields.filter(f => f !== name));
     }
+
+    // Handle Thai Address Autocomplete
+    if (['subDistrict', 'district', 'province', 'postalCode'].includes(name)) {
+      if (thaiIndex && value.trim().length > 0) {
+        import('thaizip').then(({ searchThaiAddress, formatThaiAddressSuggestion }) => {
+          const results = searchThaiAddress(thaiIndex, value, { limit: 5 });
+          setAddressSuggestions(results.map(formatThaiAddressSuggestion));
+          setActiveAddressField(name);
+        });
+      } else {
+        setAddressSuggestions([]);
+      }
+    } else {
+      setAddressSuggestions([]);
+      setActiveAddressField(null);
+    }
+  };
+
+  const handleSelectAddress = async (suggestion) => {
+    const { resolveThaiAddress } = await import('thaizip');
+    const resolved = resolveThaiAddress(suggestion);
+    setForm(prev => ({
+      ...prev,
+      subDistrict: resolved.subdistrict,
+      district: resolved.district,
+      province: resolved.province,
+      postalCode: resolved.postalCode
+    }));
+    setAddressSuggestions([]);
+    setActiveAddressField(null);
+    
+    // Clear missing fields if filled
+    setMissingFields(prev => prev.filter(f => !['subDistrict', 'district', 'province', 'postalCode'].includes(f)));
+  };
+
+  const handleBlur = () => {
+    // Delay hiding suggestions so click event can fire
+    setTimeout(() => {
+      setAddressSuggestions([]);
+      setActiveAddressField(null);
+    }, 200);
+  };
+
+  const renderSuggestions = (fieldName) => {
+    if (activeAddressField !== fieldName || addressSuggestions.length === 0) return null;
+    return (
+      <ul style={{
+        position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
+        background: 'var(--bg-dark)', border: '1px solid var(--gold)',
+        borderRadius: '6px', listStyle: 'none', margin: 0, padding: 0,
+        maxHeight: '200px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
+      }}>
+        {addressSuggestions.map(s => (
+          <li key={s.id} 
+              onMouseDown={(e) => { e.preventDefault(); handleSelectAddress(s); }}
+              style={{ padding: '12px 14px', borderBottom: '1px solid var(--line)', cursor: 'pointer', fontSize: '13.5px', color: 'var(--paper)' }}>
+            {s.label}
+          </li>
+        ))}
+      </ul>
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -198,24 +270,28 @@ export default function PreOrderModal({ product, onClose, user }) {
               <label>ซอย / ถนน</label>
               <input name="soi" value={form.soi} onChange={handleChange} placeholder="เช่น ซอยสุขุมวิท 1" />
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }}>
               <label>ตำบล / แขวง *</label>
-              <input name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange} placeholder="ตำบล" />
+              <input name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange} onBlur={handleBlur} onFocus={(e) => handleChange(e)} placeholder="ตำบล" autoComplete="off" />
+              {renderSuggestions('subDistrict')}
             </div>
           </div>
           <div className="form-row">
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }}>
               <label>อำเภอ / เขต *</label>
-              <input name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange} placeholder="อำเภอ" />
+              <input name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange} onBlur={handleBlur} onFocus={(e) => handleChange(e)} placeholder="อำเภอ" autoComplete="off" />
+              {renderSuggestions('district')}
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }}>
               <label>จังหวัด *</label>
-              <input name="province" className={missingFields.includes('province') ? 'invalid-field' : ''} value={form.province} onChange={handleChange} placeholder="จังหวัด" />
+              <input name="province" className={missingFields.includes('province') ? 'invalid-field' : ''} value={form.province} onChange={handleChange} onBlur={handleBlur} onFocus={(e) => handleChange(e)} placeholder="จังหวัด" autoComplete="off" />
+              {renderSuggestions('province')}
             </div>
           </div>
-          <div className="form-group">
+          <div className="form-group" style={{ position: 'relative' }}>
             <label>รหัสไปรษณีย์ *</label>
-            <input name="postalCode" className={missingFields.includes('postalCode') ? 'invalid-field' : ''} value={form.postalCode} onChange={handleChange} placeholder="เช่น 10110" maxLength="5" />
+            <input name="postalCode" className={missingFields.includes('postalCode') ? 'invalid-field' : ''} value={form.postalCode} onChange={handleChange} onBlur={handleBlur} onFocus={(e) => handleChange(e)} placeholder="เช่น 10110" maxLength="5" autoComplete="off" />
+            {renderSuggestions('postalCode')}
           </div>
 
           {/* ข้อมูลสินค้า */}
