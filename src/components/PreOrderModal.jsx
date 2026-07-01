@@ -15,16 +15,48 @@ export default function PreOrderModal({ product, onClose, user }) {
   const [error, setError] = useState('');
   const [missingFields, setMissingFields] = useState([]);
 
-  // Thai Address Autocomplete State
-  const [thaiIndex, setThaiIndex] = useState(null);
-  const [addressSuggestions, setAddressSuggestions] = useState([]);
-  const [activeAddressField, setActiveAddressField] = useState(null);
+  // Thai Address Cascading State
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [subDistricts, setSubDistricts] = useState([]);
 
   useEffect(() => {
-    import('thaizip/data').then(({ loadDefaultIndex }) => {
-      loadDefaultIndex().then(setThaiIndex);
+    import('@krizad/thai-address-helper').then((ah) => {
+      setProvinces(ah.getUniqueProvinces());
     });
   }, []);
+
+  useEffect(() => {
+    if (form.province) {
+      import('@krizad/thai-address-helper').then((ah) => {
+        setDistricts(ah.getDistrictsByProvince(form.province));
+      });
+    } else {
+      setDistricts([]);
+    }
+  }, [form.province]);
+
+  useEffect(() => {
+    if (form.province && form.district) {
+      import('@krizad/thai-address-helper').then((ah) => {
+        setSubDistricts(ah.getSubDistrictsByDistrict(form.province, form.district));
+      });
+    } else {
+      setSubDistricts([]);
+    }
+  }, [form.province, form.district]);
+
+  useEffect(() => {
+    if (form.province && form.district && form.subDistrict) {
+      import('@krizad/thai-address-helper').then((ah) => {
+        const zip = ah.getZipcodeByHierarchy(form.province, form.district, form.subDistrict);
+        setForm(prev => ({ ...prev, postalCode: zip || '' }));
+        if (zip) {
+          setMissingFields(prev => prev.filter(f => f !== 'postalCode'));
+        }
+      });
+    }
+  }, [form.province, form.district, form.subDistrict]);
 
   const formatPhoneNumber = (value) => {
     const phoneNumber = value.replace(/\D/g, '');
@@ -42,71 +74,23 @@ export default function PreOrderModal({ product, onClose, user }) {
     if (name === 'phone') {
       value = formatPhoneNumber(value);
     }
-    setForm({ ...form, [name]: value });
-    if (missingFields.includes(name)) {
-      setMissingFields(missingFields.filter(f => f !== name));
-    }
-
-    // Handle Thai Address Autocomplete
-    if (['subDistrict', 'district', 'province'].includes(name)) {
-      if (thaiIndex && value.trim().length > 0) {
-        import('thaizip').then(({ searchThaiAddress, formatThaiAddressSuggestion }) => {
-          const results = searchThaiAddress(thaiIndex, value, { limit: 5 });
-          setAddressSuggestions(results.map(formatThaiAddressSuggestion));
-          setActiveAddressField(name);
-        });
-      } else {
-        setAddressSuggestions([]);
-      }
-    } else {
-      setAddressSuggestions([]);
-      setActiveAddressField(null);
-    }
-  };
-
-  const handleSelectAddress = async (suggestion) => {
-    const { resolveThaiAddress } = await import('thaizip');
-    const resolved = resolveThaiAddress(suggestion);
-    setForm(prev => ({
-      ...prev,
-      subDistrict: resolved.subdistrict,
-      district: resolved.district,
-      province: resolved.province,
-      postalCode: resolved.postalCode
-    }));
-    setAddressSuggestions([]);
-    setActiveAddressField(null);
     
-    // Clear missing fields if filled
-    setMissingFields(prev => prev.filter(f => !['subDistrict', 'district', 'province', 'postalCode'].includes(f)));
-  };
+    setForm(prev => {
+      const next = { ...prev, [name]: value };
+      if (name === 'province') {
+        next.district = '';
+        next.subDistrict = '';
+        next.postalCode = '';
+      } else if (name === 'district') {
+        next.subDistrict = '';
+        next.postalCode = '';
+      }
+      return next;
+    });
 
-  const handleBlur = () => {
-    // Delay hiding suggestions so click event can fire
-    setTimeout(() => {
-      setAddressSuggestions([]);
-      setActiveAddressField(null);
-    }, 200);
-  };
-
-  const renderSuggestions = (fieldName) => {
-    if (activeAddressField !== fieldName || addressSuggestions.length === 0) return null;
-    return (
-      <ul style={{
-        position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
-        background: 'var(--bg-dark)', border: '1px solid var(--gold)',
-        borderRadius: '6px', listStyle: 'none', margin: 0, padding: 0,
-        maxHeight: '200px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
-      }}>
-        {addressSuggestions.map(s => (
-          <li key={s.id} 
-              onMouseDown={(e) => { e.preventDefault(); handleSelectAddress(s); }}
-              style={{ padding: '12px 14px', borderBottom: '1px solid var(--line)', cursor: 'pointer', fontSize: '13.5px', color: 'var(--paper)' }}>
-            {s.label}
-          </li>
-        ))}
-      </ul>
-    );
+    if (missingFields.includes(name)) {
+      setMissingFields(prev => prev.filter(f => f !== name));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -270,22 +254,34 @@ export default function PreOrderModal({ product, onClose, user }) {
               <label>ซอย / ถนน</label>
               <input name="soi" value={form.soi} onChange={handleChange} placeholder="เช่น ซอยสุขุมวิท 1" />
             </div>
-            <div className="form-group" style={{ position: 'relative' }}>
+            <div className="form-group">
               <label>ตำบล / แขวง *</label>
-              <input name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange} onBlur={handleBlur} onFocus={(e) => handleChange(e)} placeholder="ตำบล" autoComplete="off" />
-              {renderSuggestions('subDistrict')}
+              <select name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange} disabled={!form.district}>
+                <option value="">เลือกตำบล</option>
+                {subDistricts.map(sd => (
+                  <option key={sd} value={sd}>{sd}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="form-row">
-            <div className="form-group" style={{ position: 'relative' }}>
+            <div className="form-group">
               <label>อำเภอ / เขต *</label>
-              <input name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange} onBlur={handleBlur} onFocus={(e) => handleChange(e)} placeholder="อำเภอ" autoComplete="off" />
-              {renderSuggestions('district')}
+              <select name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange} disabled={!form.province}>
+                <option value="">เลือกอำเภอ</option>
+                {districts.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </div>
-            <div className="form-group" style={{ position: 'relative' }}>
+            <div className="form-group">
               <label>จังหวัด *</label>
-              <input name="province" className={missingFields.includes('province') ? 'invalid-field' : ''} value={form.province} onChange={handleChange} onBlur={handleBlur} onFocus={(e) => handleChange(e)} placeholder="จังหวัด" autoComplete="off" />
-              {renderSuggestions('province')}
+              <select name="province" className={missingFields.includes('province') ? 'invalid-field' : ''} value={form.province} onChange={handleChange}>
+                <option value="">เลือกจังหวัด</option>
+                {provinces.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="form-group">
