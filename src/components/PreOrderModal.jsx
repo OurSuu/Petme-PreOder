@@ -114,7 +114,7 @@ export default function PreOrderModal({ product, onClose, user }) {
                const dists = ah.getDistrictsByProvince(p);
                for (const d of dists) {
                  if (foundDist && d !== foundDist) continue;
-                 if (ah.getSubDistrictsByDistrict(p, d).includes(value)) {
+                 if (ah.getSubDistrictsByDistrict(p, d).some(item => item.subDistrict === value)) {
                    foundProv = p;
                    foundDist = d;
                    break;
