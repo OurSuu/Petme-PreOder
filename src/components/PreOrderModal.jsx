@@ -47,7 +47,8 @@ export default function PreOrderModal({ product, onClose, user }) {
   useEffect(() => {
     if (form.province && form.district) {
       import('@krizad/thai-address-helper').then((ah) => {
-        setSubDistricts(ah.getSubDistrictsByDistrict(form.province, form.district));
+        const raw = ah.getSubDistrictsByDistrict(form.province, form.district);
+        setSubDistricts(raw.map(item => item.subDistrict));
       });
     } else {
       setSubDistricts([]);
