@@ -19,10 +19,18 @@ export default function PreOrderModal({ product, onClose, user }) {
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [subDistricts, setSubDistricts] = useState([]);
+  
+  // Master lists for unlocked dropdowns
+  const [allDistricts, setAllDistricts] = useState([]);
+  const [allSubDistricts, setAllSubDistricts] = useState([]);
 
   useEffect(() => {
     import('@krizad/thai-address-helper').then((ah) => {
       setProvinces(ah.getUniqueProvinces());
+    });
+    import('@/lib/thaiAddressData.json').then((data) => {
+      setAllDistricts(data.default.districts);
+      setAllSubDistricts(data.default.subDistricts);
     });
   }, []);
 
@@ -77,6 +85,7 @@ export default function PreOrderModal({ product, onClose, user }) {
     
     setForm(prev => {
       const next = { ...prev, [name]: value };
+      
       if (name === 'province') {
         next.district = '';
         next.subDistrict = '';
@@ -84,6 +93,44 @@ export default function PreOrderModal({ product, onClose, user }) {
       } else if (name === 'district') {
         next.subDistrict = '';
         next.postalCode = '';
+        // Auto-fill province if missing
+        if (!next.province && value) {
+          import('@krizad/thai-address-helper').then(ah => {
+            const p = ah.getUniqueProvinces().find(prov => ah.getDistrictsByProvince(prov).includes(value));
+            if (p) setForm(curr => ({ ...curr, province: p }));
+          });
+        }
+      } else if (name === 'subDistrict') {
+        next.postalCode = '';
+        // Auto-fill province and district if missing
+        if ((!next.province || !next.district) && value) {
+          import('@krizad/thai-address-helper').then(ah => {
+             let foundProv = next.province;
+             let foundDist = next.district;
+             const provs = ah.getUniqueProvinces();
+             for (const p of provs) {
+               if (foundProv && p !== foundProv) continue;
+               const dists = ah.getDistrictsByProvince(p);
+               for (const d of dists) {
+                 if (foundDist && d !== foundDist) continue;
+                 if (ah.getSubDistrictsByDistrict(p, d).includes(value)) {
+                   foundProv = p;
+                   foundDist = d;
+                   break;
+                 }
+               }
+               if (foundProv && foundDist) break;
+             }
+             if (foundProv && foundDist) {
+               setForm(curr => ({ 
+                 ...curr, 
+                 province: foundProv, 
+                 district: foundDist,
+                 postalCode: ah.getZipcodeByHierarchy(foundProv, foundDist, value) || ''
+               }));
+             }
+          });
+        }
       }
       return next;
     });
@@ -256,9 +303,9 @@ export default function PreOrderModal({ product, onClose, user }) {
             </div>
             <div className="form-group">
               <label>ตำบล / แขวง *</label>
-              <select name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange} disabled={!form.district}>
+              <select name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange}>
                 <option value="">เลือกตำบล</option>
-                {subDistricts.map(sd => (
+                {(form.district ? subDistricts : allSubDistricts).map(sd => (
                   <option key={sd} value={sd}>{sd}</option>
                 ))}
               </select>
@@ -267,9 +314,9 @@ export default function PreOrderModal({ product, onClose, user }) {
           <div className="form-row">
             <div className="form-group">
               <label>อำเภอ / เขต *</label>
-              <select name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange} disabled={!form.province}>
+              <select name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange}>
                 <option value="">เลือกอำเภอ</option>
-                {districts.map(d => (
+                {(form.province ? districts : allDistricts).map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
