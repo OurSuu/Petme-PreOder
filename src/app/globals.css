@@ -519,3 +519,19 @@ footer{background:#0c0a09;padding:64px 0 28px;}
 @media (max-width:480px){
   .admin-stats{grid-template-columns:1fr;}
 }
+
+/* ---------- SCROLLBAR ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(243, 236, 223, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
