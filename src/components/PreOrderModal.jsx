@@ -1,6 +1,111 @@
-'use client';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+const SearchableSelect = ({ name, label, options, value, onChange, placeholder, disabled, error }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
+  const filteredOptions = options
+    .filter(opt => opt.toLowerCase().includes(search.toLowerCase()))
+    .slice(0, 100);
+
+  return (
+    <>
+      <div 
+        className={error ? 'invalid-field' : ''}
+        onClick={() => !disabled && setIsOpen(true)}
+        style={{
+           padding: '14px 14px',
+           background: disabled ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.3)',
+           border: error ? '1px solid #ef4444' : '1px solid var(--line)',
+           borderRadius: '8px',
+           color: value ? '#fff' : '#888',
+           cursor: disabled ? 'not-allowed' : 'pointer',
+           display: 'flex',
+           justifyContent: 'space-between',
+           alignItems: 'center',
+           fontSize: '14px'
+        }}
+      >
+        <span>{value || placeholder}</span>
+        <span style={{ fontSize: '12px', opacity: 0.5 }}>▼</span>
+      </div>
+
+      {isOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.75)', zIndex: 99999,
+          display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+          backdropFilter: 'blur(4px)'
+        }} onClick={() => { setIsOpen(false); setSearch(''); }}>
+          <div style={{
+            background: 'var(--bg-dark)', width: '100%', maxWidth: '600px',
+            borderTopLeftRadius: '24px', borderTopRightRadius: '24px', 
+            height: '80vh', display: 'flex', flexDirection: 'column',
+            border: '1px solid var(--gold)', borderBottom: 'none',
+            boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
+            animation: 'slideUp 0.3s ease-out'
+          }} onClick={e => e.stopPropagation()}>
+            <style>{`
+              @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+              }
+            `}</style>
+            <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, color: 'var(--gold)', fontSize: '18px' }}>เลือก{label}</h3>
+                <button onClick={() => { setIsOpen(false); setSearch(''); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>✕</button>
+              </div>
+              <input 
+                type="text" 
+                placeholder="🔍 ค้นหา..." 
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ 
+                  width: '100%', padding: '14px 16px', borderRadius: '12px', 
+                  border: '1px solid var(--gold)', background: 'rgba(0,0,0,0.5)', 
+                  color: '#fff', fontSize: '16px', outline: 'none'
+                }}
+              />
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0' }}>
+              {filteredOptions.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#888' }}>ไม่พบข้อมูลที่คุณค้นหา</div>
+              ) : (
+                filteredOptions.map(opt => (
+                  <div 
+                    key={opt} 
+                    onClick={() => { onChange({ target: { name, value: opt } }); setIsOpen(false); setSearch(''); }}
+                    style={{ 
+                      padding: '16px 24px', 
+                      borderBottom: '1px solid rgba(255,255,255,0.03)',
+                      cursor: 'pointer',
+                      color: value === opt ? 'var(--gold)' : '#fff',
+                      fontWeight: value === opt ? 'bold' : 'normal',
+                      backgroundColor: value === opt ? 'rgba(212,175,55,0.05)' : 'transparent',
+                      display: 'flex', justifyContent: 'space-between'
+                    }}
+                  >
+                    <span>{opt}</span>
+                    {value === opt && <span>✓</span>}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 export default function PreOrderModal({ product, onClose, user }) {
   const [form, setForm] = useState({
@@ -304,32 +409,41 @@ export default function PreOrderModal({ product, onClose, user }) {
             </div>
             <div className="form-group">
               <label>ตำบล / แขวง *</label>
-              <select name="subDistrict" className={missingFields.includes('subDistrict') ? 'invalid-field' : ''} value={form.subDistrict} onChange={handleChange}>
-                <option value="">เลือกตำบล</option>
-                {(form.district ? subDistricts : allSubDistricts).map(sd => (
-                  <option key={sd} value={sd}>{sd}</option>
-                ))}
-              </select>
+              <SearchableSelect 
+                name="subDistrict" 
+                label="ตำบล / แขวง"
+                options={form.district ? subDistricts : allSubDistricts} 
+                value={form.subDistrict} 
+                onChange={handleChange} 
+                placeholder="เลือกตำบล"
+                error={missingFields.includes('subDistrict')}
+              />
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>อำเภอ / เขต *</label>
-              <select name="district" className={missingFields.includes('district') ? 'invalid-field' : ''} value={form.district} onChange={handleChange}>
-                <option value="">เลือกอำเภอ</option>
-                {(form.province ? districts : allDistricts).map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+              <SearchableSelect 
+                name="district" 
+                label="อำเภอ / เขต"
+                options={form.province ? districts : allDistricts} 
+                value={form.district} 
+                onChange={handleChange} 
+                placeholder="เลือกอำเภอ"
+                error={missingFields.includes('district')}
+              />
             </div>
             <div className="form-group">
               <label>จังหวัด *</label>
-              <select name="province" className={missingFields.includes('province') ? 'invalid-field' : ''} value={form.province} onChange={handleChange}>
-                <option value="">เลือกจังหวัด</option>
-                {provinces.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
+              <SearchableSelect 
+                name="province" 
+                label="จังหวัด"
+                options={provinces} 
+                value={form.province} 
+                onChange={handleChange} 
+                placeholder="เลือกจังหวัด"
+                error={missingFields.includes('province')}
+              />
             </div>
           </div>
           <div className="form-group">
