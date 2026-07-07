@@ -23,6 +23,20 @@ export async function GET(request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    const latestOrder = await prisma.order.findFirst({
+      where: { customerId: user.id },
+      orderBy: { createdAt: 'desc' },
+      select: { 
+        houseNo: true, moo: true, soi: true, 
+        subDistrict: true, district: true, province: true, 
+        postalCode: true, lineId: true 
+      }
+    });
+
+    if (latestOrder) {
+      user.lastAddress = latestOrder;
+    }
+
     return NextResponse.json({ user });
   } catch (error) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });

@@ -114,8 +114,16 @@ const SearchableSelect = ({ name, label, options, value, onChange, placeholder, 
 
 export default function PreOrderModal({ product, onClose, user }) {
   const [form, setForm] = useState({
-    customerName: user?.name || '', phone: user?.phone || '', lineId: '', 
-    houseNo: '', moo: '', soi: '', subDistrict: '', district: '', province: '', postalCode: '',
+    customerName: user?.name || '', 
+    phone: user?.phone || '', 
+    lineId: user?.lastAddress?.lineId || '', 
+    houseNo: user?.lastAddress?.houseNo || '', 
+    moo: user?.lastAddress?.moo || '', 
+    soi: user?.lastAddress?.soi || '', 
+    subDistrict: user?.lastAddress?.subDistrict || '', 
+    district: user?.lastAddress?.district || '', 
+    province: user?.lastAddress?.province || '', 
+    postalCode: user?.lastAddress?.postalCode || '',
     color: 'สีขาว', size: 'M', quantity: 1, note: ''
   });
   const [submitting, setSubmitting] = useState(false);
