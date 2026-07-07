@@ -46,21 +46,22 @@ const SearchableSelect = ({ name, label, options, value, onChange, placeholder, 
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.75)', zIndex: 99999,
-          display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          padding: '20px',
           backdropFilter: 'blur(4px)'
         }} onClick={() => { setIsOpen(false); setSearch(''); }}>
           <div style={{
-            background: 'var(--bg-dark)', width: '100%', maxWidth: '600px',
-            borderTopLeftRadius: '24px', borderTopRightRadius: '24px', 
-            height: '80vh', display: 'flex', flexDirection: 'column',
-            border: '1px solid var(--gold)', borderBottom: 'none',
-            boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
-            animation: 'slideUp 0.3s ease-out'
+            background: 'var(--bg-dark)', width: '100%', maxWidth: '500px',
+            borderRadius: '24px', 
+            height: '70vh', display: 'flex', flexDirection: 'column',
+            border: '1px solid var(--gold)',
+            boxShadow: '0 10px 50px rgba(0,0,0,0.5)',
+            animation: 'popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
           }} onClick={e => e.stopPropagation()}>
             <style>{`
-              @keyframes slideUp {
-                from { transform: translateY(100%); }
-                to { transform: translateY(0); }
+              @keyframes popUp {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
               }
             `}</style>
             <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid var(--line)' }}>
