@@ -1,3 +1,7 @@
+'use client';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+
 const SearchableSelect = ({ name, label, options, value, onChange, placeholder, disabled, error }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
