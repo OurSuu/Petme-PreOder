@@ -7,6 +7,9 @@ const archivo = Archivo({ subsets: ['latin'], variable: '--font-archivo', displa
 export const metadata = {
   title: 'PET ME SHIRT — DROP 01',
   description: 'เสื้อยืดจากลายเส้นมือจริง วาดจากหมาตัวจริง ทุกตัวผลิตเมื่อมีคำสั่งซื้อ จำกัดจำนวน',
+  other: {
+    'msapplication-visual-search': 'disabled',
+  },
 };
 
 export default function RootLayout({ children }) {
